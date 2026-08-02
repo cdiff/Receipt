@@ -1,7 +1,7 @@
 # Receipt Manager App (영수증 관리 앱) Design Document
 
 - **Date**: 2026-07-31
-- **Target Platform**: Android (minSdk 31, targetSdk 35)
+- **Target Platform**: Android (minSdk 31, targetSdk 35, compileSdk 35)
 - **Architecture**: MVVM + Clean Architecture with Hilt DI, Jetpack Compose (Material3), StateFlow, Room DB
 
 ---

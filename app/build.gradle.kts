@@ -41,9 +41,21 @@ android {
     }
 }
 
+// Force transitive dependencies to prevent AAR metadata API 36 compilation error
+configurations.all {
+    resolutionStrategy {
+        force("androidx.activity:activity:1.9.3")
+        force("androidx.activity:activity-compose:1.9.3")
+        force("androidx.core:core:1.15.0")
+        force("androidx.core:core-ktx:1.15.0")
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.material)
 
     // Compose
@@ -52,11 +64,17 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Haze (iOS Liquid Glass Backdrop Blur)
+    implementation(libs.haze.library)
+    implementation(libs.haze.materials)
+
+    // Lucide Icons (com.composables:icons-lucide-cmp:2.2.1)
+    implementation(libs.lucide.icons)
 
     // Hilt
     implementation(libs.hilt.android)
