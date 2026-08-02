@@ -1,5 +1,8 @@
 package com.pasic.receipt.ui.home
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,18 +16,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.composables.icons.lucide.*
 import com.pasic.receipt.ui.home.components.MonthlyScoreCard
 import com.pasic.receipt.ui.home.components.QuickActionGrid
 import com.pasic.receipt.ui.home.components.ReceiptBottomNavigation
@@ -33,6 +38,11 @@ import com.pasic.receipt.ui.home.components.RecentRegisteredCards
 import com.pasic.receipt.ui.home.components.TotalSpendingHeader
 import com.pasic.receipt.ui.theme.ScreenBackground
 import com.pasic.receipt.ui.theme.TextPrimary
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.launch
+
+private val NAV_BOTTOM_PADDING = 64.dp + 16.dp + 54.dp + 10.dp + 16.dp
 
 @Composable
 fun HomeScreen(
@@ -41,6 +51,24 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // 40px 이상 스크롤했는지 여부 (derivedStateOf로 불필요한 리컴포지션 방지)
+    val isScrolled by remember {
+        derivedStateOf { scrollState.value > 40 }
+    }
+
+    // iOS 쫀득한 스프링 애니메이션으로 progress 변환 (0f -> 1f)
+    val animatedProgress by animateFloatAsState(
+        targetValue = if (isScrolled) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "fluidNavSpring"
+    )
 
     Scaffold(
         containerColor = ScreenBackground
@@ -51,15 +79,16 @@ fun HomeScreen(
                 .padding(top = paddingValues.calculateTopPadding()),
             contentAlignment = Alignment.TopCenter
         ) {
-            // Scrollable Content Column
+            // Scrollable Content Column — hazeSource로 Liquid Glass 블러 소스 제공
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .widthIn(max = 600.dp)
-                    .verticalScroll(rememberScrollState())
+                    .hazeSource(state = hazeState)
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 20.dp)
             ) {
-                // Compact Top Action Bar (Sleek right-aligned Bell Icon)
+                // Compact Top Action Bar (Lucide Bell Icon)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -72,10 +101,10 @@ fun HomeScreen(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Notifications,
+                            imageVector = Lucide.Bell,
                             contentDescription = "Notifications",
                             tint = TextPrimary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -113,15 +142,22 @@ fun HomeScreen(
                     onSeeAllClick = onSeeAllReceiptsClick
                 )
 
-                // Bottom Padding Spacer to guarantee 100% visibility above Floating Navigation Bar & FAB
-                Spacer(modifier = Modifier.height(180.dp))
+                // 네비게이션 바 + FAB 영역만큼 여백
+                Spacer(modifier = Modifier.height(NAV_BOTTOM_PADDING))
             }
 
-            // Floating Navigation & Camera FAB Overlay pinned at bottom
+            // 부드러운 스프링 물리 기반 iOS Liquid Glass 네비게이션
             ReceiptBottomNavigation(
                 currentRoute = uiState.currentTab,
-                onTabSelected = { viewModel.selectTab(it) },
-                onCameraClick = onScanClick,
+                hazeState = hazeState,
+                scrollProgress = animatedProgress,
+                onTabSelected = { route ->
+                    if (uiState.currentTab == route) {
+                        coroutineScope.launch { scrollState.animateScrollTo(0) }
+                    } else {
+                        viewModel.selectTab(route)
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .widthIn(max = 600.dp)
