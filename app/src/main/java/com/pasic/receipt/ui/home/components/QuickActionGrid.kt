@@ -30,7 +30,7 @@ import com.pasic.receipt.ui.theme.TextSecondary
 data class QuickActionItem(
     val title: String,
     val icon: ImageVector,
-    val iconBgColor: Color = Color(0xFFA5B4FC).copy(alpha = 0.20f),
+    val iconBgColor: Color = Color.Transparent,
     val iconColor: Color = TextPrimary,
     val onClick: () -> Unit = {}
 )
@@ -74,16 +74,14 @@ private fun QuickActionButton(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(item.iconBgColor, shape = CircleShape),
+            modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.title,
                 tint = item.iconColor,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
