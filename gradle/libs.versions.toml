@@ -16,6 +16,8 @@ composeBom = "2024.10.01"
 navigationCompose = "2.8.3"
 hiltNavigationCompose = "1.2.0"
 lifecycleRuntime = "2.8.7"
+coroutinesTest = "1.8.1"
+mockitoCore = "5.11.0"
 haze = "1.7.1"
 lucide = "2.2.1"
 
@@ -56,6 +58,10 @@ androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navig
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+
+# Testing
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockitoCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

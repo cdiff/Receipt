@@ -13,13 +13,12 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
+import org.mockito.Mockito
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
-    private val repository: ReceiptRepository = mock(ReceiptRepository::class.java)
+    private val repository: ReceiptRepository = Mockito.mock(ReceiptRepository::class.java)
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
@@ -33,8 +32,9 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `loadData provides default mock receipts when database is empty`() = runTest {
-        `when`(repository.getAllReceipts()).thenReturn(flowOf(emptyList()))
+    fun `DB가 비어있을 때 기본 시연용 데모 영수증 2건을 제공한다`() = runTest {
+        val emptyFlow = flowOf<List<ReceiptEntity>>(emptyList())
+        Mockito.doReturn(emptyFlow).`when`(repository).getAllReceipts()
 
         val viewModel = HomeViewModel(repository)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -46,7 +46,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `loadData maps receipts from repository when available`() = runTest {
+    fun `DB에 영수증 데이터가 존재하면 해당 영수증 목록을 매핑한다`() = runTest {
         val testList = listOf(
             ReceiptEntity(
                 id = 10,
@@ -56,7 +56,8 @@ class HomeViewModelTest {
                 category = "식비"
             )
         )
-        `when`(repository.getAllReceipts()).thenReturn(flowOf(testList))
+        val listFlow = flowOf(testList)
+        Mockito.doReturn(listFlow).`when`(repository).getAllReceipts()
 
         val viewModel = HomeViewModel(repository)
         testDispatcher.scheduler.advanceUntilIdle()
