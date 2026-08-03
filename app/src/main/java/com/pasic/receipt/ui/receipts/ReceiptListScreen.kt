@@ -104,7 +104,7 @@ fun ReceiptListScreen(
     if (showDatePickerSheet) {
         DateRangePickerBottomSheet(
             onDismissRequest = { showDatePickerSheet = false },
-            initialStartDate = uiState.selectedDateRange?.first ?: java.time.LocalDate.now(),
+            initialStartDate = uiState.selectedDateRange?.first,
             initialEndDate = uiState.selectedDateRange?.second,
             onRangeSelected = { start, end ->
                 viewModel.onDateRangeSelected(start, end)
