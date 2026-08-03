@@ -1,4 +1,4 @@
-package com.pasic.receipt.ui.home.components
+package com.pasic.receipt.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -44,7 +44,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import com.composables.icons.lucide.*
+import com.composables.icons.lucide.FolderOutput
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ReceiptText
+import com.composables.icons.lucide.Settings
 import com.pasic.receipt.ui.theme.TextPrimary
 import com.pasic.receipt.ui.theme.TextSecondary
 import dev.chrisbanes.haze.HazeState
