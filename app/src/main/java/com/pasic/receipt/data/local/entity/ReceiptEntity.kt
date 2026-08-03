@@ -15,6 +15,7 @@ data class ReceiptEntity(
     val businessNumber: String? = null,
     val vatAmount: Double? = null,
     val category: String = "식비",
+    val categoryColor: String = "#FEF3C7", // 사용자 선택 커스텀 Hex 색상 코드 (기본값 연주황)
     val tags: String = "",
     val paymentMethod: String = "카드",
     val proofType: String = "일반영수증",
