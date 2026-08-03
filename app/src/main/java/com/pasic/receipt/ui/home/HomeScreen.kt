@@ -35,6 +35,7 @@ import com.pasic.receipt.ui.home.components.QuickActionGrid
 import com.pasic.receipt.ui.home.components.ReceiptBottomNavigation
 import com.pasic.receipt.ui.home.components.RecentReceiptsList
 import com.pasic.receipt.ui.home.components.RecentRegisteredCards
+import com.pasic.receipt.ui.home.components.SpendingUsageChart
 import com.pasic.receipt.ui.home.components.TotalSpendingHeader
 import com.pasic.receipt.ui.theme.ScreenBackground
 import com.pasic.receipt.ui.theme.TextPrimary
@@ -42,7 +43,8 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 
-private val NAV_BOTTOM_PADDING = 64.dp + 16.dp + 54.dp + 10.dp + 16.dp
+// 네비게이션 바 높이(64dp) + 하단 여백(16dp) + 스크롤 여유 여백(20dp)
+private val NAV_BOTTOM_PADDING = 64.dp + 16.dp + 20.dp
 
 @Composable
 fun HomeScreen(
@@ -139,7 +141,15 @@ fun HomeScreen(
                 // 5. Recent Receipts List
                 RecentReceiptsList(
                     receipts = uiState.recentReceipts,
-                    onSeeAllClick = onSeeAllReceiptsClick
+                    onSeeAllClick = onSeeAllReceiptsClick,
+                    onScanClick = onScanClick
+                )
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // 6. Spending Usage Bar Chart (월별, 주별, 일별)
+                SpendingUsageChart(
+                    receipts = uiState.recentReceipts
                 )
 
                 // 네비게이션 바 + FAB 영역만큼 여백
