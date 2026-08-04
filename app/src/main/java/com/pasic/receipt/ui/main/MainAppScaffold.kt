@@ -27,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.pasic.receipt.ui.components.ReceiptBottomNavigation
 import com.pasic.receipt.ui.home.HomeScreen
 import com.pasic.receipt.ui.receipts.ReceiptListScreen
@@ -80,7 +81,15 @@ fun MainAppScaffold(
                     composable("home") {
                         HomeScreen(
                             hazeState = hazeState,
-                            onScanClick = {},
+                            onScanClick = {
+                                isTransitioning = true
+                                rawScrollProgress = 0f
+                                navController.navigate("scan")
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(300)
+                                    isTransitioning = false
+                                }
+                            },
                             onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it },
                             onNavigateToReceiptList = {
                                 isTransitioning = true
@@ -107,43 +116,94 @@ fun MainAppScaffold(
                                     isTransitioning = false
                                 }
                             },
-                            onNavigateToScan = {},
+                            onNavigateToScan = {
+                                isTransitioning = true
+                                rawScrollProgress = 0f
+                                navController.navigate("scan")
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(300)
+                                    isTransitioning = false
+                                }
+                            },
                             onNavigateToExport = {},
                             onNavigateToSettings = {}
+                        )
+                    }
+
+                    // 2. 스캔 카메라 모달 (아래에서 위로 slideInVertically)
+                    composable(
+                        route = "scan",
+                        enterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
+                        exitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
+                        popEnterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
+                        popExitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } }
+                    ) { backStackEntry ->
+                        val scanViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(backStackEntry)
+                        com.pasic.receipt.ui.scan.CameraScanScreen(
+                            viewModel = scanViewModel,
+                            onNavigateToResult = {
+                                navController.navigate("scan_result")
+                            },
+                            onClose = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // 3. 스캔 결과 검증 및 편집 모달
+                    composable(
+                        route = "scan_result",
+                        enterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
+                        exitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
+                        popEnterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
+                        popExitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } }
+                    ) {
+                        val parentEntry = remember(it) { navController.getBackStackEntry("scan") }
+                        val scanViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(parentEntry)
+                        com.pasic.receipt.ui.scan.ReceiptScanResultScreen(
+                            viewModel = scanViewModel,
+                            onNavigateBackToScan = {
+                                navController.popBackStack("scan", inclusive = false)
+                            },
+                            onSaveSuccess = {
+                                navController.popBackStack("home", inclusive = false)
+                            }
                         )
                     }
                 } // NavHost
             } // safeDrawingPadding Box
         } // Surface
 
-        // 단 1개의 공통 탭바 — scrollProgress에 따라 텍스트 숨김 & 크기 축소
-        ReceiptBottomNavigation(
-            currentRoute = currentRoute,
-            hazeState = hazeState,
-            scrollProgress = scrollProgress,
-            onTabSelected = { targetRoute ->
-                if (currentRoute != targetRoute) {
-                    isTransitioning = true
-                    rawScrollProgress = 0f
-                    coroutineScope.launch {
-                        kotlinx.coroutines.delay(300)
-                        isTransitioning = false
-                    }
-                    when (targetRoute) {
-                        "home" -> navController.navigate("home") {
-                            popUpTo("home") { inclusive = true }
+        // 단 1개의 공통 탭바 — 스캔/결과 모달 진입 시 숨김 처리
+        if (currentRoute !in listOf("scan", "scan_result")) {
+            ReceiptBottomNavigation(
+                currentRoute = currentRoute,
+                hazeState = hazeState,
+                scrollProgress = scrollProgress,
+                onTabSelected = { targetRoute ->
+                    if (currentRoute != targetRoute) {
+                        isTransitioning = true
+                        rawScrollProgress = 0f
+                        coroutineScope.launch {
+                            kotlinx.coroutines.delay(300)
+                            isTransitioning = false
                         }
-                        "receipts" -> navController.navigate("receipts") {
-                            launchSingleTop = true
+                        when (targetRoute) {
+                            "home" -> navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                            "receipts" -> navController.navigate("receipts") {
+                                launchSingleTop = true
+                            }
+                            "export" -> {}
+                            "settings" -> {}
                         }
-                        "export" -> {}
-                        "settings" -> {}
                     }
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .widthIn(max = 600.dp)
-        )
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .widthIn(max = 600.dp)
+            )
+        }
     }
 }
