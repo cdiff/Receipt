@@ -1,8 +1,6 @@
 package com.pasic.receipt.ui.main
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -52,14 +51,13 @@ fun MainAppScaffold(
 
     // 각 화면에서 콜백으로 올려주는 원시 스크롤 진행도 (0f ~ 1f)
     var rawScrollProgress by remember { mutableFloatStateOf(0f) }
+    // 탭 전환 직후 사라지는 화면의 스크롤 콜백이 뒤늦게 올라오는 걸 차단하는 플래그
+    var isTransitioning by remember { androidx.compose.runtime.mutableStateOf(false) }
 
-    // spring 애니메이션 적용 — 화면 전환 시에도 부드럽게 리셋됨
+    // tween 애니메이션 — 화면 전환 시 탭바가 튀지 않고 즉시 부드럽게 리셋됨
     val scrollProgress by animateFloatAsState(
         targetValue = rawScrollProgress,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = tween(durationMillis = 150),
         label = "globalNavScrollProgress"
     )
 
@@ -83,10 +81,15 @@ fun MainAppScaffold(
                         HomeScreen(
                             hazeState = hazeState,
                             onScanClick = {},
-                            onScrollProgressChanged = { rawScrollProgress = it },
+                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it },
                             onNavigateToReceiptList = {
+                                isTransitioning = true
                                 rawScrollProgress = 0f
                                 navController.navigate("receipts") { launchSingleTop = true }
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(300)
+                                    isTransitioning = false
+                                }
                             }
                         )
                     }
@@ -94,10 +97,15 @@ fun MainAppScaffold(
                     composable("receipts") {
                         ReceiptListScreen(
                             hazeState = hazeState,
-                            onScrollProgressChanged = { rawScrollProgress = it },
+                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it },
                             onNavigateToHome = {
+                                isTransitioning = true
                                 rawScrollProgress = 0f
                                 navController.navigate("home") { popUpTo("home") { inclusive = true } }
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(300)
+                                    isTransitioning = false
+                                }
                             },
                             onNavigateToScan = {},
                             onNavigateToExport = {},
@@ -115,7 +123,12 @@ fun MainAppScaffold(
             scrollProgress = scrollProgress,
             onTabSelected = { targetRoute ->
                 if (currentRoute != targetRoute) {
+                    isTransitioning = true
                     rawScrollProgress = 0f
+                    coroutineScope.launch {
+                        kotlinx.coroutines.delay(300)
+                        isTransitioning = false
+                    }
                     when (targetRoute) {
                         "home" -> navController.navigate("home") {
                             popUpTo("home") { inclusive = true }
