@@ -130,6 +130,7 @@ fun ReceiptBottomNavigation(
 /**
  * iOS 26 Liquid Glassmorphism 컨테이너 (맑은 수성 유리 필)
  */
+@OptIn(dev.chrisbanes.haze.ExperimentalHazeApi::class)
 @Composable
 private fun FigmaGlassSurface(
     hazeState: HazeState?,
@@ -140,8 +141,8 @@ private fun FigmaGlassSurface(
 
     val glassGradientFill = Brush.verticalGradient(
         colors = listOf(
-            Color.White.copy(alpha = 0.25f),
-            Color.White.copy(alpha = 0.10f)
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.03f)
         )
     )
 

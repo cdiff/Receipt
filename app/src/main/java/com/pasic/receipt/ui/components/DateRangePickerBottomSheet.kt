@@ -1,5 +1,7 @@
 package com.pasic.receipt.ui.components
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -87,6 +90,7 @@ fun DateRangePickerBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .animateContentSize(animationSpec = tween(durationMillis = 200))
                 .padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -167,7 +171,7 @@ fun DateRangePickerBottomSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 3. 일자 그리드 (보편적인 5줄 기준 고정 높이 220.dp 설정 — 4,5,6줄 상관없이 시트 높이/CTA 위치 100% 고정)
+            // 3. 일자 그리드 (36dp 카드 크기 100% 고정 + 200ms 부드러운 시트 높이 슬라이딩 적용)
             val firstDayOfMonth = calendarMonth.atDay(1)
             val firstDayOfWeekOffset = firstDayOfMonth.dayOfWeek.value % 7 // 일요일 시작(0~6)
             val lengthOfMonth = calendarMonth.lengthOfMonth()
@@ -176,16 +180,12 @@ fun DateRangePickerBottomSheet(
             val rows = (totalGridSlots + 6) / 7
 
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 for (rowIndex in 0 until rows) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         for (colIndex in 0..6) {
@@ -204,24 +204,16 @@ fun DateRangePickerBottomSheet(
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .fillMaxHeight()
+                                        .aspectRatio(1f)
                                         .padding(vertical = 1.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val rangeSlateBg = Color(0xFFF1F5F9)
                                     val isSelectedEdge = isStart || isEnd
 
-                                    // 줄 수(4, 5, 6줄)에 맞춰 카드 크기 및 하이라이트 배경 높이 동적 조율
-                                    val cardSize = when (rows) {
-                                        4 -> 38.dp
-                                        6 -> 30.dp
-                                        else -> 34.dp
-                                    }
-                                    val rangeBgHeight = when (rows) {
-                                        4 -> 42.dp
-                                        6 -> 34.dp
-                                        else -> 38.dp
-                                    }
+                                    // 카드 크기 36.dp 및 범위 배경 높이 40.dp 고정 (모든 달 동일)
+                                    val cardSize = 36.dp
+                                    val rangeBgHeight = 40.dp
 
                                     // 범위 연결 하이라이트 배경 (은은한 라이트 슬레이트 그레이 캡슐)
                                     if (isInRange) {
@@ -344,16 +336,12 @@ fun DateRangePickerBottomSheet(
                                     (dayNum - lengthOfMonth).toString() to false
                                 }
 
-                                val cardSize = when (rows) {
-                                    4 -> 38.dp
-                                    6 -> 30.dp
-                                    else -> 34.dp
-                                }
+                                val cardSize = 36.dp
 
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .fillMaxHeight()
+                                        .aspectRatio(1f)
                                         .padding(vertical = 1.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
