@@ -167,7 +167,7 @@ fun DateRangePickerBottomSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 3. 일자 그리드 (Date Range Selection Grid)
+            // 3. 일자 그리드 (보편적인 5줄 기준 고정 높이 220.dp 설정 — 4,5,6줄 상관없이 시트 높이/CTA 위치 100% 고정)
             val firstDayOfMonth = calendarMonth.atDay(1)
             val firstDayOfWeekOffset = firstDayOfMonth.dayOfWeek.value % 7 // 일요일 시작(0~6)
             val lengthOfMonth = calendarMonth.lengthOfMonth()
@@ -176,12 +176,16 @@ fun DateRangePickerBottomSheet(
             val rows = (totalGridSlots + 6) / 7
 
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
                 for (rowIndex in 0 until rows) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         for (colIndex in 0..6) {
@@ -200,26 +204,39 @@ fun DateRangePickerBottomSheet(
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .aspectRatio(1f)
-                                        .padding(vertical = 2.dp),
+                                        .fillMaxHeight()
+                                        .padding(vertical = 1.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val rangeSlateBg = Color(0xFFF1F5F9)
                                     val isSelectedEdge = isStart || isEnd
+
+                                    // 줄 수(4, 5, 6줄)에 맞춰 카드 크기 및 하이라이트 배경 높이 동적 조율
+                                    val cardSize = when (rows) {
+                                        4 -> 38.dp
+                                        6 -> 30.dp
+                                        else -> 34.dp
+                                    }
+                                    val rangeBgHeight = when (rows) {
+                                        4 -> 42.dp
+                                        6 -> 34.dp
+                                        else -> 38.dp
+                                    }
 
                                     // 범위 연결 하이라이트 배경 (은은한 라이트 슬레이트 그레이 캡슐)
                                     if (isInRange) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(40.dp)
+                                                .height(rangeBgHeight)
                                                 .background(rangeSlateBg)
                                         )
                                     } else if (isStart && endDate != null) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(40.dp)
+                                                .height(rangeBgHeight)
+                                                .padding(start = 2.dp)
                                                 .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
                                                 .background(rangeSlateBg)
                                         )
@@ -227,7 +244,8 @@ fun DateRangePickerBottomSheet(
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(40.dp)
+                                                .height(rangeBgHeight)
+                                                .padding(end = 2.dp)
                                                 .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
                                                 .background(rangeSlateBg)
                                         )
@@ -235,17 +253,18 @@ fun DateRangePickerBottomSheet(
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(40.dp)
+                                                .height(rangeBgHeight)
+                                                .padding(horizontal = 2.dp)
                                                 .clip(RoundedCornerShape(12.dp))
                                                 .background(rangeSlateBg)
                                         )
                                     }
 
-                                    // 날짜 텍스트 카드 (둥근 사각형 360도 입체 감싸는 소프트 섀도우)
+                                    // 날짜 텍스트 카드 (동적 크기 적용 + 360도 입체 소프트 섀도우)
                                     val squircleShape = RoundedCornerShape(12.dp)
                                     val cardModifier = if (isSelectedEdge) {
                                         Modifier
-                                            .size(36.dp)
+                                            .size(cardSize)
                                             .shadow(
                                                 elevation = 8.dp,
                                                 shape = squircleShape,
@@ -256,7 +275,7 @@ fun DateRangePickerBottomSheet(
                                             .background(Color.White)
                                     } else {
                                         Modifier
-                                            .size(36.dp)
+                                            .size(cardSize)
                                             .clip(squircleShape)
                                     }
 
@@ -296,30 +315,70 @@ fun DateRangePickerBottomSheet(
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Text(
-                                                text = dayNum.toString(),
-                                                fontSize = 15.sp,
-                                                fontWeight = if (isSelectedEdge || colIndex == 0 || colIndex == 6) FontWeight.Bold else FontWeight.SemiBold,
-                                                color = dateTextColor
+                                        // 날짜 숫자 — 항상 정중앙 고정
+                                        Text(
+                                            text = dayNum.toString(),
+                                            fontSize = 15.sp,
+                                            fontWeight = if (isSelectedEdge || colIndex == 0 || colIndex == 6) FontWeight.Bold else FontWeight.SemiBold,
+                                            color = dateTextColor
+                                        )
+                                        // 오늘 날짜 인디케이터 Dot — 숫자 아래 절대 위치 오버레이
+                                        if (isToday) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomCenter)
+                                                    .padding(bottom = 3.dp)
+                                                    .size(4.dp)
+                                                    .clip(CircleShape)
+                                                    .background(if (isSelectedEdge) Color(0xFF0F172A) else Color(0xFF2563EB))
                                             )
-                                            if (isToday) {
-                                                Spacer(modifier = Modifier.height(1.dp))
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(4.dp)
-                                                        .clip(CircleShape)
-                                                        .background(if (isSelectedEdge) Color(0xFF0F172A) else Color(0xFF2563EB))
-                                                )
-                                            }
                                         }
                                     }
                                 }
                             } else {
-                                Spacer(modifier = Modifier.weight(1f))
+                                // 이전달 또는 다음달 날짜 표기 (연한 회색 Color(0xFFCBD5E1) + 클릭 시 해당 월로 자연스럽게 이동)
+                                val (fadedDayText, isPrev) = if (dayNum < 1) {
+                                    val prevMonth = calendarMonth.minusMonths(1)
+                                    (prevMonth.lengthOfMonth() + dayNum).toString() to true
+                                } else {
+                                    (dayNum - lengthOfMonth).toString() to false
+                                }
+
+                                val cardSize = when (rows) {
+                                    4 -> 38.dp
+                                    6 -> 30.dp
+                                    else -> 34.dp
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .padding(vertical = 1.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(cardSize)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null,
+                                                onClick = {
+                                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    calendarMonth = if (isPrev) calendarMonth.minusMonths(1) else calendarMonth.plusMonths(1)
+                                                }
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = fadedDayText,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color(0xFFCBD5E1)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
