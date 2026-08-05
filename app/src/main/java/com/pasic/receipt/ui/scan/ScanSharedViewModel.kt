@@ -5,10 +5,14 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pasic.receipt.ai.OcrResult
+import com.pasic.receipt.ai.ReceiptOcrEngine
 import com.pasic.receipt.data.local.entity.ReceiptEntity
 import com.pasic.receipt.data.repository.ReceiptRepository
 import com.pasic.receipt.util.ReceiptImageStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -26,6 +30,8 @@ data class CategoryItem(
 
 data class ScanUiState(
     val isScanning: Boolean = false,
+    val scanStep: Int = 1, // 1: 텍스트 스캔 중, 2: 상호명 및 금액 추출 중, 3: 카테고리 자동 분류 중
+    val isStepDone: Boolean = false, // 단계 완료 체크 아이콘 팝업 표시 여부
     val ocrResult: OcrResult? = null,
     val customCategories: List<CategoryItem> = listOf(
         CategoryItem("식비", "#FEF3C7"),
@@ -48,44 +54,131 @@ class ScanSharedViewModel @Inject constructor(
     private val _saveSuccessEvent = MutableSharedFlow<Unit>()
     val saveSuccessEvent: SharedFlow<Unit> = _saveSuccessEvent.asSharedFlow()
 
+    private var scanningJob: Job? = null
+
+    fun cancelScanning() {
+        scanningJob?.cancel()
+        scanningJob = null
+        _uiState.update { it.copy(isScanning = false, scanStep = 1, isStepDone = false) }
+    }
+
+    private fun Bitmap.resizeForGemini(maxPx: Int = 1536): Bitmap {
+        val maxDim = maxOf(width, height)
+        if (maxDim <= maxPx) return this
+        val scale = maxPx.toFloat() / maxDim
+        return Bitmap.createScaledBitmap(this, (width * scale).toInt(), (height * scale).toInt(), true)
+    }
+
     fun processBitmap(context: Context, bitmap: Bitmap, onComplete: () -> Unit) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true) }
-            val savedPath = ReceiptImageStorage.saveBitmap(context, bitmap)
-            val result = ReceiptOcrEngine.processBitmap(bitmap, savedPath)
-            _uiState.update {
-                it.copy(
-                    isScanning = false,
-                    ocrResult = result
-                )
+        scanningJob?.cancel()
+        scanningJob = viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isScanning = true, scanStep = 1, isStepDone = false) }
+
+                // 1536px 리사이징
+                val resized = bitmap.resizeForGemini(1536)
+                val savedPath = ReceiptImageStorage.saveBitmap(context, resized)
+                delay(600)
+
+                // 1단계 완료 ➔ 체크 팝업
+                _uiState.update { it.copy(isStepDone = true) }
+                delay(450)
+
+                // 2단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                _uiState.update { it.copy(scanStep = 2, isStepDone = false) }
+                val existingCats = _uiState.value.customCategories.map { it.name }
+                val result = ReceiptOcrEngine.processBitmap(resized, savedPath, existingCats)
+
+                // 2단계 완료 ➔ 체크 팝업
+                _uiState.update { it.copy(isStepDone = true) }
+                delay(450)
+
+                // 3단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                _uiState.update { it.copy(scanStep = 3, isStepDone = false) }
+                delay(500)
+
+                // 3단계 완료 ➔ 체크 팝업
+                _uiState.update { it.copy(isStepDone = true) }
+                delay(450)
+
+                _uiState.update {
+                    it.copy(
+                        isScanning = false,
+                        scanStep = 1,
+                        isStepDone = false,
+                        ocrResult = result
+                    )
+                }
+                onComplete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiState.update { it.copy(isScanning = false, scanStep = 1, isStepDone = false) }
             }
-            onComplete()
         }
     }
 
     fun processGalleryUri(context: Context, uri: Uri, onComplete: () -> Unit) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true) }
-            val savedPath = ReceiptImageStorage.copyUriToAppStorage(context, uri) ?: ""
-            val result = ReceiptOcrEngine.processImage(context, uri, savedPath)
-            _uiState.update {
-                it.copy(
-                    isScanning = false,
-                    ocrResult = result
-                )
+        scanningJob?.cancel()
+        scanningJob = viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isScanning = true, scanStep = 1, isStepDone = false) }
+
+                val savedPath = ReceiptImageStorage.copyUriToAppStorage(context, uri) ?: ""
+                delay(600)
+
+                // 1단계 완료 ➔ 체크 팝업
+                _uiState.update { it.copy(isStepDone = true) }
+                delay(450)
+
+                // 2단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                _uiState.update { it.copy(scanStep = 2, isStepDone = false) }
+                val existingCats = _uiState.value.customCategories.map { it.name }
+                val result = ReceiptOcrEngine.processImage(context, uri, savedPath, existingCats)
+
+                // 2단계 완료 ➔ 체크 팝업
+                _uiState.update { it.copy(isStepDone = true) }
+                delay(450)
+
+                // 3단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                _uiState.update { it.copy(scanStep = 3, isStepDone = false) }
+                delay(500)
+
+                // 3단계 완료 ➔ 체크 팝업
+                _uiState.update { it.copy(isStepDone = true) }
+                delay(450)
+
+                _uiState.update {
+                    it.copy(
+                        isScanning = false,
+                        scanStep = 1,
+                        isStepDone = false,
+                        ocrResult = result
+                    )
+                }
+                onComplete()
+            } catch (e: Exception) {
+                android.util.Log.e("ScanSharedViewModel", "processGalleryUri error: ${e.message}", e)
+                _uiState.update { it.copy(isScanning = false, scanStep = 1, isStepDone = false) }
             }
-            onComplete()
         }
     }
 
     fun setSimulationResult(context: Context, onComplete: () -> Unit) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true) }
+        scanningJob?.cancel()
+        scanningJob = viewModelScope.launch {
+            _uiState.update { it.copy(isScanning = true, scanStep = 1) }
+            delay(500)
+            _uiState.update { it.copy(scanStep = 2) }
+            delay(500)
+            _uiState.update { it.copy(scanStep = 3) }
+            delay(400)
+
             val fallbackPath = ""
             val result = ReceiptOcrEngine.generateSampleDemoResult(fallbackPath)
             _uiState.update {
                 it.copy(
                     isScanning = false,
+                    scanStep = 1,
                     ocrResult = result
                 )
             }
@@ -94,62 +187,57 @@ class ScanSharedViewModel @Inject constructor(
     }
 
     fun updateOcrResult(updated: OcrResult) {
-        // When user manually edits any field, set confidence score to 100%
         val with100Score = updated.copy(confidenceScore = 100)
         _uiState.update { it.copy(ocrResult = with100Score) }
     }
 
-    fun addCustomCategory(name: String, colorHex: String): CategoryItem {
+    fun addCustomCategory(name: String, colorHex: String) {
+        if (name.isBlank()) return
         val newItem = CategoryItem(name, colorHex)
         _uiState.update { state ->
-            val updatedList = state.customCategories.toMutableList().apply {
-                if (none { it.name == name }) {
-                    add(newItem)
-                }
+            if (state.customCategories.none { it.name == name }) {
+                state.copy(customCategories = state.customCategories + newItem)
+            } else {
+                state
             }
-            state.copy(customCategories = updatedList)
         }
-        return newItem
     }
 
-    fun saveReceipt(
+    fun saveReceiptToDatabase(
         merchantName: String,
         date: String,
         amount: Double,
         currency: String,
-        businessNumber: String?,
+        businessNumber: String,
+        confidence: Int,
         category: String,
         categoryColor: String,
-        imagePath: String,
-        confidence: Int
+        imagePath: String
     ) {
         viewModelScope.launch {
-            val entity = ReceiptEntity(
-                merchantName = merchantName.ifBlank { "(주) 스타벅스 코리아" },
-                date = date.ifBlank { "8월 04일 · 오후 2:30" },
-                totalAmount = amount,
-                currency = currency,
-                convertedAmountKrw = amount,
-                businessNumber = businessNumber,
-                category = category,
-                categoryColor = categoryColor,
-                imagePath = imagePath,
-                ocrConfidence = confidence
-            )
-            repository.insertReceipt(entity)
-            _uiState.update { it.copy(isSaveSuccess = true) }
-            _saveSuccessEvent.emit(Unit)
+            try {
+                val entity = ReceiptEntity(
+                    merchantName = merchantName.ifBlank { "알 수 없는 상호" },
+                    date = date,
+                    totalAmount = amount,
+                    currency = currency,
+                    businessNumber = businessNumber,
+                    ocrConfidence = confidence,
+                    category = category,
+                    categoryColor = categoryColor,
+                    imagePath = imagePath
+                )
+                repository.insertReceipt(entity)
+                _uiState.update { it.copy(isSaveSuccess = true, errorMessage = null) }
+                _saveSuccessEvent.emit(Unit)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiState.update { it.copy(errorMessage = "영수증 저장에 실패했습니다.") }
+            }
         }
     }
 
-    fun resetState() {
-        _uiState.update {
-            it.copy(
-                isScanning = false,
-                ocrResult = null,
-                isSaveSuccess = false,
-                errorMessage = null
-            )
-        }
+    fun resetSaveSuccess() {
+        _uiState.update { it.copy(isSaveSuccess = false, errorMessage = null) }
     }
 }

@@ -1,11 +1,11 @@
-package com.pasic.receipt.ui.scan
+package com.pasic.receipt.ui.scan.camera
 
 import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.provider.Settings
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -57,7 +57,7 @@ enum class CameraPermissionStatus {
 }
 
 @Composable
-fun CameraPermissionHandler(
+fun CameraPermissionManager(
     onGalleryClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -66,13 +66,21 @@ fun CameraPermissionHandler(
     var showRationaleDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
+    val permissionsToRequest = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val cameraGranted = permissions[Manifest.permission.CAMERA] == true
+        if (cameraGranted) {
             permissionStatus = CameraPermissionStatus.GRANTED
         } else {
-            // Check if permanently denied
             permissionStatus = CameraPermissionStatus.PERMANENTLY_DENIED
             showSettingsDialog = true
         }
@@ -94,7 +102,6 @@ fun CameraPermissionHandler(
         if (permissionStatus == CameraPermissionStatus.GRANTED) {
             content()
         } else {
-            // Fallback UI when camera permission is unavailable
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -169,7 +176,7 @@ fun CameraPermissionHandler(
                                 if (permissionStatus == CameraPermissionStatus.PERMANENTLY_DENIED) {
                                     showSettingsDialog = true
                                 } else {
-                                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                                    permissionLauncher.launch(permissionsToRequest)
                                 }
                             },
                             shape = RoundedCornerShape(12.dp),
@@ -195,7 +202,6 @@ fun CameraPermissionHandler(
             }
         }
 
-        // Rationale Dialog
         if (showRationaleDialog) {
             AlertDialog(
                 onDismissRequest = { showRationaleDialog = false },
@@ -209,7 +215,7 @@ fun CameraPermissionHandler(
                     Button(
                         onClick = {
                             showRationaleDialog = false
-                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                            permissionLauncher.launch(permissionsToRequest)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
                     ) {
@@ -225,7 +231,6 @@ fun CameraPermissionHandler(
             )
         }
 
-        // Permanently Denied Settings Dialog
         if (showSettingsDialog) {
             AlertDialog(
                 onDismissRequest = { showSettingsDialog = false },
