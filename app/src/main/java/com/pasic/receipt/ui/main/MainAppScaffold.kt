@@ -67,8 +67,8 @@ fun MainAppScaffold(
             modifier = Modifier.fillMaxSize(),
             color = Color.White
         ) {
-            // safeDrawingPadding: 상태바·카메라 노치·하단 제스처 영역 인셋을 단 1곳에서 처리
-            Box(modifier = Modifier.safeDrawingPadding()) {
+            // safeDrawingPadding: 상태바·카메라 노치·하단 제스처 영역 인셋 처리 (화이트 마스킹)
+            Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
                 NavHost(
                     navController = navController,
                     startDestination = "home",

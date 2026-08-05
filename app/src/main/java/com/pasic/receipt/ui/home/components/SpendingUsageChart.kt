@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -134,35 +135,28 @@ private fun CanvasBarChart(
     val density = LocalDensity.current
     val isDaily = selectedPeriod == ChartPeriod.DAILY
 
-    // 각 막대별 독립 애니메이션 비율 상태 목록
-    val animatedRatios = remember(selectedPeriod) {
-        mutableStateListOf(*Array(barItems.size) { 0f })
-    }
+    // key(selectedPeriod)로 탭 변경 시 Compose 슬롯 테이블을 완전히 재구성하여 index -1 크래시 100% 방지
+    key(selectedPeriod) {
+        var animStarted by remember { mutableStateOf(false) }
 
-    // 탭 전환 시 모든 막대가 동시 및 묵직하게 솟아오름
-    LaunchedEffect(selectedPeriod) {
-        animatedRatios.indices.forEach { i ->
-            val target = barItems.getOrNull(i)?.valueRatio?.coerceIn(0.04f, 1.0f) ?: 0f
-            animatedRatios[i] = target
+        LaunchedEffect(selectedPeriod) {
+            animStarted = true
         }
-    }
 
-    val springRatios = animatedRatios.mapIndexed { i, target ->
-        animateFloatAsState(
-            targetValue = target,
+        val animProgress by animateFloatAsState(
+            targetValue = if (animStarted) 1f else 0f,
             animationSpec = tween(
-                durationMillis = 350,
+                durationMillis = 400,
                 easing = FastOutSlowInEasing
             ),
-            label = "bar_$i"
-        ).value
-    }
+            label = "chartAnimProgress"
+        )
 
-    val highlightColor = Color(0xFF3B82F6)
-    val normalBarColor = Color(0xFFCBD5E1)
-    val labelTextColor = TextSecondary.toArgb()
-    val highlightTextColor = highlightColor.toArgb()
-    val topAmountTextColor = TextMuted.toArgb()
+        val highlightColor = Color(0xFF3B82F6)
+        val normalBarColor = Color(0xFFCBD5E1)
+        val labelTextColor = TextSecondary.toArgb()
+        val highlightTextColor = highlightColor.toArgb()
+        val topAmountTextColor = TextMuted.toArgb()
 
     val labelTextSizePx = with(density) { 11.sp.toPx() }
     val topAmountTextSizePx = with(density) { 11.sp.toPx() }
@@ -184,7 +178,7 @@ private fun CanvasBarChart(
         val cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
 
         barItems.forEachIndexed { i, item ->
-            val ratio = springRatios.getOrElse(i) { 0f }.coerceIn(0f, 1f)
+            val ratio = (item.valueRatio.coerceIn(0.04f, 1.0f) * animProgress).coerceIn(0f, 1f)
             val barHeight = (barAreaHeight * ratio).coerceAtLeast(3.dp.toPx())
 
             val left = slotWidth * i + (slotWidth - barWidth) / 2f
@@ -240,6 +234,7 @@ private fun CanvasBarChart(
             }
         }
     }
+}
 }
 
 /**
@@ -333,19 +328,19 @@ private fun calculateChartData(
 ): Triple<String, String, List<BarData>> {
     val today = LocalDate.now()
     val currentMonth = today.month
-    val totalReceiptsSum = receipts.sumOf { it.totalAmount }.toInt()
+    val totalReceiptsSum = if (receipts.isNotEmpty()) receipts.sumOf { it.totalAmount }.toInt() else 0
     val currentPeriodSum = if (totalReceiptsSum > 0) totalReceiptsSum else 40400
 
     return when (period) {
         ChartPeriod.MONTHLY -> {
             val monthFormatter = DateTimeFormatter.ofPattern("M월")
-            val mockMonthlyAmounts = listOf(650000, 780000, 920000, 850000, 980000, 810000)
-            
+            val mockMonthlyAmounts = listOf(650000, 780000, 920000, 850000, 980000, 810000, 850000)
+
             val bars = (5 downTo 0).mapIndexed { i, offsetMonths ->
                 val targetMonthDate = today.minusMonths(offsetMonths.toLong())
                 val isCurrent = (offsetMonths == 0)
                 val label = if (isCurrent) "이번 달" else targetMonthDate.format(monthFormatter)
-                val amount = if (isCurrent) currentPeriodSum else mockMonthlyAmounts.getOrElse(i) { 800000 }
+                val amount = if (isCurrent) currentPeriodSum else mockMonthlyAmounts.getOrNull(i) ?: 800000
                 val manWon = amount / 10000
 
                 BarData(
@@ -367,13 +362,13 @@ private fun calculateChartData(
 
         ChartPeriod.WEEKLY -> {
             val dateFormatter = DateTimeFormatter.ofPattern("M.d")
-            val mockWeeklyAmounts = listOf(190000, 230000, 650000, 300000, 260000, 250000)
+            val mockWeeklyAmounts = listOf(190000, 230000, 650000, 300000, 260000, 250000, 250000)
 
             val bars = (5 downTo 0).mapIndexed { i, offsetWeeks ->
                 val targetEndDate = today.minusWeeks(offsetWeeks.toLong())
                 val isCurrent = (offsetWeeks == 0)
                 val label = if (isCurrent) "이번 주" else "~${targetEndDate.format(dateFormatter)}"
-                val amount = if (isCurrent) currentPeriodSum else mockWeeklyAmounts.getOrElse(i) { 250000 }
+                val amount = if (isCurrent) currentPeriodSum else mockWeeklyAmounts.getOrNull(i) ?: 250000
                 val manWon = amount / 10000
 
                 BarData(
@@ -400,24 +395,24 @@ private fun calculateChartData(
                 18000, 45000, 12000, 95000, 22000, 15000, 32000,
                 55000, 18000, 42000, 88000, 14000, 62000, 38000,
                 25000, 48000, 75000, 31000, 28000, 34000, 52000,
-                19000, 41000, 63000, 27000, 39000, 84000, todayAmount
+                19000, 41000, 63000, 27000, 39000, 84000, todayAmount, 25000, 25000
             )
 
-            // 최근 28일간의 일별 타임라인 (이번 달 날짜만 파란색으로 칠하고, 지난 달은 연회색 처리)
-            val bars = (27 downTo 0).map { offsetDays ->
+            // 최근 28일간의 일별 타임라인 (27 downTo 0 ➔ 28개 데이터 포인트)
+            val bars = (27 downTo 0).mapIndexed { idx, offsetDays ->
                 val targetDate = today.minusDays(offsetDays.toLong())
                 val isToday = (offsetDays == 0)
                 val isThisMonth = (targetDate.month == currentMonth)
 
                 val label = if (isToday) "오늘" else targetDate.format(dayFormatter)
                 val showLabel = isToday || offsetDays % 5 == 0
-                val amount = if (isToday) todayAmount else mockPattern.getOrElse(27 - offsetDays) { 25000 }
+                val amount = if (isToday) todayAmount else mockPattern.getOrNull(idx) ?: 25000
 
                 BarData(
                     label = label,
                     amountFormatted = null,
                     valueRatio = (amount.toFloat() / 100000f).coerceIn(0.04f, 1.0f),
-                    isHighlighted = isThisMonth, // 이번 달에 속하는 날짜들만 파란색 하이라이트!
+                    isHighlighted = isThisMonth,
                     showLabel = showLabel
                 )
             }

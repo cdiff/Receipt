@@ -40,9 +40,9 @@ class HomeViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals(2, state.recentReceipts.size)
-        assertEquals("스타벅스 강남점", state.recentReceipts[0].merchantName)
-        assertEquals("명동교자 본점", state.recentReceipts[1].merchantName)
+        assertEquals(5, state.recentReceipts.size)
+        assertEquals("스타벅스 강남대로점", state.recentReceipts[0].merchantName)
+        assertEquals("CU 역삼하이츠점", state.recentReceipts[1].merchantName)
     }
 
     @Test
