@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -58,6 +59,12 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.material)
 
+    // Firebase AI Logic (Gemini via googleAI backend) & App Check Debug & Analytics
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.ai)
+    implementation(libs.firebase.appcheck.debug)
+    implementation(libs.firebase.analytics)
+
     // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -75,6 +82,9 @@ dependencies {
 
     // Lucide Icons (com.composables:icons-lucide-cmp:2.2.1)
     implementation(libs.lucide.icons)
+
+    // Lottie Vector Animation
+    implementation(libs.lottie.compose)
 
     // Hilt
     implementation(libs.hilt.android)
