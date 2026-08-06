@@ -37,6 +37,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -219,19 +221,49 @@ private fun ReceiptItemCard(
             .padding(16.dp)
     ) {
         Column {
-            // Status Badge
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(StatusBadgeBg)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            // Header Row (Circular Receipt Photo Thumbnail in place of deleted 인증완료 badge)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "인증완료",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = StatusBadgeText
-                )
+                val imageBitmap = remember(receipt.imagePath) {
+                    if (receipt.imagePath.isNotBlank()) {
+                        runCatching {
+                            val file = java.io.File(receipt.imagePath)
+                            if (file.exists()) {
+                                android.graphics.BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+                            } else null
+                        }.getOrNull()
+                    } else null
+                }
+
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = receipt.merchantName,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .border(0.8.dp, Color.Black.copy(alpha = 0.08f), CircleShape)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF1F5F9)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Lucide.Receipt,
+                            contentDescription = null,
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -246,9 +278,10 @@ private fun ReceiptItemCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Category
+            // Category (Prefix with #)
+            val categoryText = if (receipt.category.startsWith("#")) receipt.category else "#${receipt.category}"
             Text(
-                text = receipt.category,
+                text = categoryText,
                 fontSize = 11.sp,
                 color = TextSecondary
             )

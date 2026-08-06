@@ -319,8 +319,32 @@ private fun ChartSegmentTab(
     }
 }
 
+private fun ReceiptEntity.extractLocalDate(): LocalDate {
+    if (createdAt > 1000000000000L) {
+        try {
+            return java.time.Instant.ofEpochMilli(createdAt)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+        } catch (e: Exception) { }
+    }
+    return try {
+        val today = LocalDate.now()
+        val cleaned = date.split("·").firstOrNull()?.trim() ?: date
+        val monthMatch = Regex("(\\d{1,2})월\\s*(\\d{1,2})일").find(cleaned)
+        if (monthMatch != null) {
+            val month = monthMatch.groupValues[1].toInt()
+            val day = monthMatch.groupValues[2].toInt()
+            LocalDate.of(today.year, month, day)
+        } else {
+            today
+        }
+    } catch (e: Exception) {
+        LocalDate.now()
+    }
+}
+
 /**
- * 영수증 데이터 기반 차트 데이터 계산
+ * 영수증 데이터 기반 차트 데이터 동적 집계 계산
  */
 private fun calculateChartData(
     period: ChartPeriod,
@@ -328,103 +352,150 @@ private fun calculateChartData(
 ): Triple<String, String, List<BarData>> {
     val today = LocalDate.now()
     val currentMonth = today.month
-    val totalReceiptsSum = if (receipts.isNotEmpty()) receipts.sumOf { it.totalAmount }.toInt() else 0
-    val currentPeriodSum = if (totalReceiptsSum > 0) totalReceiptsSum else 40400
+    val receiptsByDate = receipts.groupBy { it.extractLocalDate() }
 
     return when (period) {
         ChartPeriod.MONTHLY -> {
             val monthFormatter = DateTimeFormatter.ofPattern("M월")
-            val mockMonthlyAmounts = listOf(650000, 780000, 920000, 850000, 980000, 810000, 850000)
 
-            val bars = (5 downTo 0).mapIndexed { i, offsetMonths ->
+            // 과거 6개월 동적 집계 (5 downTo 0)
+            val monthlyData = (5 downTo 0).map { offsetMonths ->
                 val targetMonthDate = today.minusMonths(offsetMonths.toLong())
+                val targetYear = targetMonthDate.year
+                val targetMonth = targetMonthDate.month
+
+                val monthSum = receipts.filter { r ->
+                    val rDate = r.extractLocalDate()
+                    rDate.year == targetYear && rDate.month == targetMonth
+                }.sumOf { it.totalAmount }.toInt()
+
                 val isCurrent = (offsetMonths == 0)
                 val label = if (isCurrent) "이번 달" else targetMonthDate.format(monthFormatter)
-                val amount = if (isCurrent) currentPeriodSum else mockMonthlyAmounts.getOrNull(i) ?: 800000
-                val manWon = amount / 10000
+                Triple(label, monthSum, isCurrent)
+            }
 
+            val maxMonthSum = maxOf(monthlyData.maxOfOrNull { it.second } ?: 0, 10000)
+            val currentMonthSum = monthlyData.last().second
+            val lastMonthSum = monthlyData.getOrNull(monthlyData.size - 2)?.second ?: 0
+
+            val bars = monthlyData.map { (label, amount, isCurrent) ->
+                val manWon = amount / 10000
                 BarData(
                     label = label,
-                    amountFormatted = if (manWon > 0) "$manWon" else "${amount / 1000}k",
-                    valueRatio = (amount.toFloat() / 1000000f).coerceIn(0.05f, 1.0f),
+                    amountFormatted = if (manWon > 0) "$manWon" else if (amount > 0) "${amount / 1000}k" else "0",
+                    valueRatio = (amount.toFloat() / maxMonthSum.toFloat()).coerceIn(0.05f, 1.0f),
                     isHighlighted = isCurrent
                 )
             }
 
-            val avgMonthly = 850000
-            val lastMonthSum = 810000
-            val diff = lastMonthSum - currentPeriodSum
-            val subTitle = if (diff >= 0) "이번 달엔 ${formatToManWon(diff)} 덜 썼어요"
-            else "이번 달엔 ${formatToManWon(-diff)} 더 썼어요"
+            val validSums = monthlyData.map { it.second }.filter { it > 0 }
+            val avgMonthly = if (validSums.isNotEmpty()) validSums.average().toInt() else currentMonthSum
+            val diff = lastMonthSum - currentMonthSum
+            val subTitle = when {
+                lastMonthSum == 0 && currentMonthSum == 0 -> "이번 달 지출 기록이 없어요"
+                lastMonthSum == 0 -> "지난달 기록 대비 이번 달 ${formatToManWon(currentMonthSum)} 사용"
+                diff >= 0 -> "지난달보다 ${formatToManWon(diff)} 덜 썼어요"
+                else -> "지난달보다 ${formatToManWon(-diff)} 더 썼어요"
+            }
 
             Triple("한 달에 ${formatToManWon(avgMonthly)} 정도 써요", subTitle, bars)
         }
 
         ChartPeriod.WEEKLY -> {
             val dateFormatter = DateTimeFormatter.ofPattern("M.d")
-            val mockWeeklyAmounts = listOf(190000, 230000, 650000, 300000, 260000, 250000, 250000)
 
-            val bars = (5 downTo 0).mapIndexed { i, offsetWeeks ->
+            // 과거 6주 동적 집계 (5 downTo 0)
+            val weeklyData = (5 downTo 0).map { offsetWeeks ->
                 val targetEndDate = today.minusWeeks(offsetWeeks.toLong())
+                val weekStart = targetEndDate.minusDays(6)
+                val weekSum = receipts.filter { r ->
+                    val rDate = r.extractLocalDate()
+                    !rDate.isBefore(weekStart) && !rDate.isAfter(targetEndDate)
+                }.sumOf { it.totalAmount }.toInt()
+
                 val isCurrent = (offsetWeeks == 0)
                 val label = if (isCurrent) "이번 주" else "~${targetEndDate.format(dateFormatter)}"
-                val amount = if (isCurrent) currentPeriodSum else mockWeeklyAmounts.getOrNull(i) ?: 250000
-                val manWon = amount / 10000
+                Triple(label, weekSum, isCurrent)
+            }
 
+            val maxWeekSum = maxOf(weeklyData.maxOfOrNull { it.second } ?: 0, 5000)
+            val currentWeekSum = weeklyData.last().second
+            val lastWeekSum = weeklyData.getOrNull(weeklyData.size - 2)?.second ?: 0
+
+            val bars = weeklyData.map { (label, amount, isCurrent) ->
+                val manWon = amount / 10000
                 BarData(
                     label = label,
-                    amountFormatted = if (manWon > 0) "$manWon" else "${amount / 1000}k",
-                    valueRatio = (amount.toFloat() / 700000f).coerceIn(0.05f, 1.0f),
+                    amountFormatted = if (manWon > 0) "$manWon" else if (amount > 0) "${amount / 1000}k" else "0",
+                    valueRatio = (amount.toFloat() / maxWeekSum.toFloat()).coerceIn(0.05f, 1.0f),
                     isHighlighted = isCurrent
                 )
             }
 
-            val avgWeekly = 220000
-            val prevWeekSum = 250000
-            val diff = prevWeekSum - currentPeriodSum
-            val subTitle = if (diff >= 0) "이번 주엔 ${formatToManWon(diff)} 덜 썼어요"
-            else "이번 주엔 ${formatToManWon(-diff)} 더 썼어요"
+            val validSums = weeklyData.map { it.second }.filter { it > 0 }
+            val avgWeekly = if (validSums.isNotEmpty()) validSums.average().toInt() else currentWeekSum
+            val diff = lastWeekSum - currentWeekSum
+            val subTitle = when {
+                lastWeekSum == 0 && currentWeekSum == 0 -> "이번 주 지출 기록이 없어요"
+                lastWeekSum == 0 -> "지난주 기록 대비 이번 주 ${formatToManWon(currentWeekSum)} 사용"
+                diff >= 0 -> "지난주보다 ${formatToManWon(diff)} 덜 썼어요"
+                else -> "지난주보다 ${formatToManWon(-diff)} 더 썼어요"
+            }
 
             Triple("일주일 ${formatToManWon(avgWeekly)} 정도 써요", subTitle, bars)
         }
 
         ChartPeriod.DAILY -> {
             val dayFormatter = DateTimeFormatter.ofPattern("M.d")
-            val todayAmount = receipts.firstOrNull()?.totalAmount?.toInt() ?: 12400
-            val mockPattern = listOf(
-                18000, 45000, 12000, 95000, 22000, 15000, 32000,
-                55000, 18000, 42000, 88000, 14000, 62000, 38000,
-                25000, 48000, 75000, 31000, 28000, 34000, 52000,
-                19000, 41000, 63000, 27000, 39000, 84000, todayAmount, 25000, 25000
-            )
 
-            // 최근 28일간의 일별 타임라인 (27 downTo 0 ➔ 28개 데이터 포인트)
-            val bars = (27 downTo 0).mapIndexed { idx, offsetDays ->
+            // 과거 28일간의 일별 동적 타임라인 (27 downTo 0)
+            val dailyData = (27 downTo 0).map { offsetDays ->
                 val targetDate = today.minusDays(offsetDays.toLong())
+                val daySum = receiptsByDate[targetDate]?.sumOf { it.totalAmount }?.toInt() ?: 0
                 val isToday = (offsetDays == 0)
                 val isThisMonth = (targetDate.month == currentMonth)
-
                 val label = if (isToday) "오늘" else targetDate.format(dayFormatter)
                 val showLabel = isToday || offsetDays % 5 == 0
-                val amount = if (isToday) todayAmount else mockPattern.getOrNull(idx) ?: 25000
 
+                val manWon = daySum / 10000
+                val amountFormatted = if (manWon > 0) "$manWon" else if (daySum > 0) "${daySum / 1000}k" else null
+
+                Tuple5(label, daySum, isToday, isThisMonth, showLabel, amountFormatted)
+            }
+
+            val maxDaySum = maxOf(dailyData.maxOfOrNull { it.second } ?: 0, 2000)
+            val todayAmount = dailyData.last().second
+
+            val bars = dailyData.map { (label, amount, isToday, isThisMonth, showLabel, amountFormatted) ->
                 BarData(
                     label = label,
-                    amountFormatted = null,
-                    valueRatio = (amount.toFloat() / 100000f).coerceIn(0.04f, 1.0f),
+                    amountFormatted = amountFormatted,
+                    valueRatio = (amount.toFloat() / maxDaySum.toFloat()).coerceIn(0.04f, 1.0f),
                     isHighlighted = isThisMonth,
                     showLabel = showLabel
                 )
             }
 
+            val nonZeroDays = dailyData.map { it.second }.filter { it > 0 }
+            val avgDaily = if (nonZeroDays.isNotEmpty()) nonZeroDays.average().toInt() else todayAmount
+
             Triple(
-                "하루에 ${formatToManWon(40000)} 정도 써요",
+                "하루에 ${formatToManWon(avgDaily)} 정도 써요",
                 "오늘은 ${formatWon(todayAmount)} 썼어요",
                 bars
             )
         }
     }
 }
+
+private data class Tuple5<A, B, C, D, E, F>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E,
+    val sixth: F
+)
 
 private fun formatToManWon(amount: Int): String {
     val manWon = amount / 10000

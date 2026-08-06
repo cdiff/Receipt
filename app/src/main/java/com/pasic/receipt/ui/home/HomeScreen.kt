@@ -26,12 +26,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Lucide
-import com.pasic.receipt.ui.home.components.MonthlyScoreCard
+import com.pasic.receipt.ui.home.components.CategorySpendingBreakdown
+import com.pasic.receipt.ui.home.components.HomeMainHeroBannerCard
 import com.pasic.receipt.ui.home.components.QuickActionGrid
 import com.pasic.receipt.ui.home.components.RecentReceiptsList
-import com.pasic.receipt.ui.home.components.RecentRegisteredCards
 import com.pasic.receipt.ui.home.components.SpendingUsageChart
-import com.pasic.receipt.ui.home.components.TotalSpendingHeader
 import com.pasic.receipt.ui.theme.ScreenBackground
 import com.pasic.receipt.ui.theme.TextPrimary
 import dev.chrisbanes.haze.HazeState
@@ -99,43 +98,42 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 1. 상단 총 지출 헤더
-            TotalSpendingHeader(
-                totalSpendingFormatted = uiState.totalSpendingFormatted,
-                trendFormatted = uiState.trendFormatted
+            // 1. 메인 히어로 배너 카드 (오늘 지출 & 스캔 건수 기반 동적 배지/타이틀)
+            HomeMainHeroBannerCard(
+                todayCount = uiState.todayCount,
+                todayAmountFormatted = uiState.todayAmountFormatted,
+                onCardClick = onNavigateToReceiptList
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 2. 이달의 소비 성향 카드
-            MonthlyScoreCard()
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // 3. 4-Grid 빠른 메뉴
             QuickActionGrid(
-                onScanClick = onScanClick
+                onScanClick = onScanClick,
+                onNavigateToReceiptList = onNavigateToReceiptList
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // 4. 최근 등록 카드 캐러셀
-            RecentRegisteredCards()
+            // 4. 소비 사용량 차트 (월별, 주별, 일별)
+            SpendingUsageChart(
+                receipts = uiState.allReceipts
+            )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // 5. 카테고리별 지출 (로컬 DB 전체 누적 상위 4개)
+            CategorySpendingBreakdown(
+                receipts = uiState.allReceipts
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             // 5. 최근 영수증 목록
             RecentReceiptsList(
                 receipts = uiState.recentReceipts,
                 onSeeAllClick = onNavigateToReceiptList,
                 onScanClick = onScanClick
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // 6. 소비 사용량 차트 (월별, 주별, 일별)
-            SpendingUsageChart(
-                receipts = uiState.allReceipts
             )
 
             // 하단 네비게이션 바 여백

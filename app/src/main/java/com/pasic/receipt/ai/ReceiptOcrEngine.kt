@@ -122,11 +122,6 @@ object ReceiptOcrEngine {
             val suggestedNewCategory = extractJsonValue(jsonText, "suggestedNewCategory").replace("#", "")
             val confidence = extractJsonValue(jsonText, "confidence").toIntOrNull()?.coerceIn(30, 100) ?: 85
 
-            if (dateStr.isBlank()) {
-                val nowMonthDay = LocalDate.now().format(DateTimeFormatter.ofPattern("M월 d일"))
-                val nowTime = LocalTime.now().format(DateTimeFormatter.ofPattern("a h:mm"))
-                dateStr = "$nowMonthDay · $nowTime"
-            }
 
             val (finalCategory, categoryColor) = inferCategory(merchantName, category)
 

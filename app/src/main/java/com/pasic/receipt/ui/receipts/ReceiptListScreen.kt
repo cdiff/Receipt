@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlin.math.min
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -142,9 +143,10 @@ fun ReceiptListScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // 3. 가로 스크롤 필터 칩 목록
+            // 3. 가로 스크롤 필터 칩 목록 (DB 카테고리 100% 동적 표출)
             FilterChipRow(
-                selectedChips = uiState.selectedFilterChips,
+                categories = uiState.availableCategories,
+                selectedCategories = uiState.selectedCategories,
                 onChipToggle = viewModel::onFilterChipToggled
             )
 
@@ -338,12 +340,13 @@ private fun ReceiptSearchBar(
 }
 
 /**
- * 카테고리 필터 칩 카루셀 행
+ * 카테고리 필터 칩 카루셀 행 (로컬 DB 카테고리 100% 동적 연동)
  */
 @Composable
 private fun FilterChipRow(
-    selectedChips: Set<FilterChipType>,
-    onChipToggle: (FilterChipType) -> Unit
+    categories: List<String>,
+    selectedCategories: Set<String>,
+    onChipToggle: (String) -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -351,8 +354,8 @@ private fun FilterChipRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(FilterChipType.entries.toTypedArray()) { chip ->
-            val isSelected = selectedChips.contains(chip)
+        items(categories) { category ->
+            val isSelected = selectedCategories.contains(category)
 
             Box(
                 modifier = Modifier
@@ -368,14 +371,14 @@ private fun FilterChipRow(
                         indication = null,
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onChipToggle(chip)
+                            onChipToggle(category)
                         }
                     )
                     .padding(horizontal = 14.dp, vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = chip.label,
+                    text = category,
                     fontSize = 13.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                     color = if (isSelected) Color.White else Color(0xFF475569)
@@ -420,20 +423,43 @@ private fun ReceiptListItemRow(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 1. 좌측 원형 썸네일 (카테고리별 시그니처 썸네일 및 커스텀 색상)
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(getThumbnailBgColor(receipt)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = getCategoryIcon(receipt.category),
-                contentDescription = receipt.category,
-                tint = getThumbnailIconColor(receipt.category),
-                modifier = Modifier.size(20.dp)
+        // 1. 좌측 원형 썸네일 (로컬 DB 영수증 이미지 우선 표시, 없을 시 카테고리별 시그니처 썸네일)
+        val imageBitmap = remember(receipt.imagePath) {
+            if (receipt.imagePath.isNotBlank()) {
+                runCatching {
+                    val file = java.io.File(receipt.imagePath)
+                    if (file.exists()) {
+                        android.graphics.BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+                    } else null
+                }.getOrNull()
+            } else null
+        }
+
+        if (imageBitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = imageBitmap,
+                contentDescription = receipt.merchantName,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, Color.Black.copy(alpha = 0.08f), CircleShape)
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(getThumbnailBgColor(receipt)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = getCategoryIcon(receipt.category),
+                    contentDescription = receipt.category,
+                    tint = getThumbnailIconColor(receipt.category),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(14.dp))
