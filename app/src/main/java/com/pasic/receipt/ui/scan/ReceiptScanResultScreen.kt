@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Calendar
 import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Plus
@@ -51,6 +53,7 @@ import com.pasic.receipt.ui.scan.result.AiCategorySuggestionCard
 import com.pasic.receipt.ui.scan.result.ConfidenceBadge
 import com.pasic.receipt.ui.scan.result.IosGlassTextField
 import com.pasic.receipt.ui.scan.result.LightboxDialog
+import com.pasic.receipt.ui.scan.result.ReceiptDateTimePickerBottomSheet
 import com.pasic.receipt.ui.scan.result.ReceiptPreviewCard
 import com.pasic.receipt.ui.scan.result.ReceiptSaveSuccessDialog
 import com.pasic.receipt.ui.scan.result.TaxWarningBanner
@@ -84,13 +87,9 @@ fun ReceiptScanResultScreen(
     var showLightbox by remember { mutableStateOf(false) }
     var showAddCategorySheet by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
+    var showDateTimePickerSheet by remember { mutableStateOf(false) }
 
-    // Mark 100% confidence when user edits any field
-    fun markEdited() {
-        if (confidenceScore < 100) {
-            confidenceScore = 100
-        }
-    }
+
 
     val totalAmountDouble = amountString.toDoubleOrNull() ?: 0.0
 
@@ -171,7 +170,6 @@ fun ReceiptScanResultScreen(
                         selectedCategory = suggestedCategory
                         selectedCategoryColor = "#F3E8FF"
                         isAiCatSuggestionDismissed = true
-                        markEdited()
                     },
                     onCustomInput = {
                         showAddCategorySheet = true
@@ -190,17 +188,26 @@ fun ReceiptScanResultScreen(
                     value = merchantName,
                     onValueChange = {
                         merchantName = it
-                        markEdited()
                     }
                 )
 
-                // 일시
+                // 일시 (필드 전체 터치 시 휠 피커 바텀시트 오픈)
                 IosGlassTextField(
                     label = "결제 일시",
                     value = dateString,
                     onValueChange = {
                         dateString = it
-                        markEdited()
+                    },
+                    onClick = { showDateTimePickerSheet = true },
+                    trailingIcon = {
+                        IconButton(onClick = { showDateTimePickerSheet = true }) {
+                            Icon(
+                                imageVector = Lucide.Calendar,
+                                contentDescription = "날짜 시간 선택",
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 )
 
@@ -210,7 +217,6 @@ fun ReceiptScanResultScreen(
                     value = amountString,
                     onValueChange = {
                         amountString = it.filter { char -> char.isDigit() }
-                        markEdited()
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
@@ -221,7 +227,6 @@ fun ReceiptScanResultScreen(
                     value = businessNumber,
                     onValueChange = {
                         businessNumber = it
-                        markEdited()
                     }
                 )
 
@@ -245,11 +250,13 @@ fun ReceiptScanResultScreen(
                             onClick = {
                                 selectedCategory = categoryItem.name
                                 selectedCategoryColor = categoryItem.colorHex
-                                markEdited()
                             },
                             shape = RoundedCornerShape(20.dp),
                             color = if (isSelected) parseHexColor(categoryItem.colorHex) else Color.White,
-                            border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            border = androidx.compose.foundation.BorderStroke(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0)
+                            ),
                             modifier = Modifier.height(40.dp)
                         ) {
                             Box(
@@ -270,8 +277,8 @@ fun ReceiptScanResultScreen(
                     Surface(
                         onClick = { showAddCategorySheet = true },
                         shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFF1F5F9),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        color = Color.White,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                         modifier = Modifier.height(40.dp)
                     ) {
                         Row(
@@ -310,6 +317,7 @@ fun ReceiptScanResultScreen(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF475569)),
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(54.dp)
@@ -319,11 +327,13 @@ fun ReceiptScanResultScreen(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "다시 촬영",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
 
@@ -347,8 +357,9 @@ fun ReceiptScanResultScreen(
                         containerColor = Color(0xFF0F172A),
                         contentColor = Color.White
                     ),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                     modifier = Modifier
-                        .weight(1.5f)
+                        .weight(1.4f)
                         .height(54.dp)
                 ) {
                     Icon(
@@ -356,11 +367,13 @@ fun ReceiptScanResultScreen(
                         contentDescription = null,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "저장하기",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -382,7 +395,6 @@ fun ReceiptScanResultScreen(
                     viewModel.addCustomCategory(newCategoryName, newColorHex)
                     selectedCategory = newCategoryName
                     selectedCategoryColor = newColorHex
-                    markEdited()
                     showAddCategorySheet = false
                 }
             )
@@ -394,6 +406,16 @@ fun ReceiptScanResultScreen(
                 onDismiss = {
                     showSuccessDialog = false
                     onSaveSuccess()
+                }
+            )
+        }
+
+        if (showDateTimePickerSheet) {
+            ReceiptDateTimePickerBottomSheet(
+                onDismissRequest = { showDateTimePickerSheet = false },
+                initialDateString = dateString,
+                onDateTimeSelected = { selected ->
+                    dateString = selected
                 }
             )
         }

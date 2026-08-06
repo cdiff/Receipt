@@ -349,7 +349,10 @@ fun IosGlassTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    readOnly: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
     Column {
         Text(
@@ -360,22 +363,35 @@ fun IosGlassTextField(
             modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
         )
 
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color(0xFFF8FAFC),
-                focusedBorderColor = Color(0xFF2563EB),
-                unfocusedBorderColor = Color(0xFFE2E8F0),
-                focusedTextColor = Color(0xFF0F172A),
-                unfocusedTextColor = Color(0xFF1E293B)
-            ),
-            keyboardOptions = keyboardOptions,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                readOnly = readOnly || (onClick != null),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color(0xFFF8FAFC),
+                    focusedBorderColor = Color(0xFF2563EB),
+                    unfocusedBorderColor = Color(0xFFE2E8F0),
+                    focusedTextColor = Color(0xFF0F172A),
+                    unfocusedTextColor = Color(0xFF1E293B)
+                ),
+                keyboardOptions = keyboardOptions,
+                trailingIcon = trailingIcon,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (onClick != null) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable(onClick = onClick)
+                )
+            }
+        }
     }
 }
 
