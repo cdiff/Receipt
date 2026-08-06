@@ -33,8 +33,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,6 +106,32 @@ fun HomeMainHeroBannerCard(
         label = "floatingRotation"
     )
 
+    // 3. Tap Wobble / Jiggle animation state
+    val coroutineScope = rememberCoroutineScope()
+    val tapScale = remember { Animatable(1f) }
+    val tapRotation = remember { Animatable(0f) }
+
+    fun triggerJiggle() {
+        coroutineScope.launch {
+            launch {
+                tapScale.animateTo(1.06f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                tapScale.animateTo(
+                    1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+            launch {
+                tapRotation.animateTo(-5f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                tapRotation.animateTo(5f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                tapRotation.animateTo(-2f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                tapRotation.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessLow))
+            }
+        }
+    }
+
     var showLevelDialog by remember { mutableStateOf(false) }
 
     if (showLevelDialog) {
@@ -126,7 +154,7 @@ fun HomeMainHeroBannerCard(
                     )
                 )
             )
-            .clickable(onClick = onCardClick)
+            .clickable { triggerJiggle() }
             .padding(horizontal = 24.dp, vertical = 32.dp)
     ) {
         Column {
@@ -164,130 +192,133 @@ fun HomeMainHeroBannerCard(
             val context = LocalContext.current
             val piggyResId = remember(context) {
                 context.resources.getIdentifier("img_piggy_bank", "drawable", context.packageName).takeIf { it != 0 }
-                    ?: context.resources.getIdentifier("ic_piggy_bank", "drawable", context.packageName).takeIf { it != 0 }
+            }
+            val smallBubbleResId = remember(context) {
+                context.resources.getIdentifier("img_bubble_small", "drawable", context.packageName).takeIf { it != 0 }
             }
 
             Box(
                 modifier = Modifier
                     .align(Alignment.End)
-                    .padding(end = 12.dp)
+                    .padding(end = 12.dp, top = 16.dp)
             ) {
-                // Small Floating Soap Bubble 1 (2nd largest bubble)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(x = (-13).dp, y = (-75).dp)
-                        .size(34.dp)
-                        .graphicsLayer {
-                            scaleX = entranceScale.value
-                            scaleY = entranceScale.value
-                            alpha = entranceAlpha.value
-                            translationY = offsetY.dp.toPx() * 1.25f
-                            rotationZ = -rotationDegrees * 1.5f
-                        }
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.45f),
-                                    Color(0x55E0F2FE),
-                                    Color(0x40F472B6)
-                                )
-                            )
-                        )
-                        .border(
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.8f)),
-                            shape = CircleShape
-                        )
-                )
-
-                // Tiny Floating Soap Bubble 2 (Top-Right floating bubble above main piggy)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 10.dp, y = (-36).dp)
-                        .size(22.dp)
-                        .graphicsLayer {
-                            scaleX = entranceScale.value
-                            scaleY = entranceScale.value
-                            alpha = entranceAlpha.value
-                            translationY = offsetY.dp.toPx() * 0.85f
-                            rotationZ = rotationDegrees * 2f
-                        }
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.55f),
-                                    Color(0x66E0F2FE),
-                                    Color(0x443B82F6)
-                                )
-                            )
-                        )
-                        .border(
-                            border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.85f)),
-                            shape = CircleShape
-                        )
-                )
-
-                // Main 3D Piggy Soap Bubble Container (160.dp)
-                Box(
-                    modifier = Modifier
-                        .size(160.dp)
-                        .graphicsLayer {
-                            scaleX = entranceScale.value
-                            scaleY = entranceScale.value
-                            alpha = entranceAlpha.value
-                            translationY = offsetY.dp.toPx()
-                            rotationZ = rotationDegrees
-                        }
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.35f),
-                                    Color(0x40E0F2FE),
-                                    Color(0x30F472B6),
-                                    Color(0x203B82F6)
-                                )
-                            )
-                        )
-                        .border(
-                            border = BorderStroke(
-                                width = 1.5.dp,
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.9f),
-                                        Color(0x9993C5FD),
-                                        Color(0x99F472B6),
-                                        Color.White.copy(alpha = 0.4f)
-                                    )
-                                )
-                            ),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Soap Bubble Top-Left Specular Gloss Reflection
+                // Small Floating Soap Bubble 1 (52.dp - Bottom Left)
+                if (smallBubbleResId != null) {
+                    Image(
+                        painter = painterResource(id = smallBubbleResId),
+                        contentDescription = "작은 비눗방울 1",
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .offset(x = (-18).dp, y = (-24).dp)
+                            .size(52.dp)
+                            .graphicsLayer {
+                                scaleX = entranceScale.value * (1f + (tapScale.value - 1f) * 0.5f)
+                                scaleY = entranceScale.value * (1f + (tapScale.value - 1f) * 0.5f)
+                                alpha = entranceAlpha.value
+                                translationY = offsetY.dp.toPx() * 1.25f
+                                rotationZ = -rotationDegrees * 1.5f - tapRotation.value * 0.8f
+                            }
+                    )
+                } else {
                     Box(
                         modifier = Modifier
-                            .size(40.dp, 20.dp)
-                            .align(Alignment.TopStart)
-                            .padding(start = 20.dp, top = 18.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color.White.copy(alpha = 0.45f))
+                            .align(Alignment.BottomStart)
+                            .offset(x = (-18).dp, y = (-24).dp)
+                            .size(52.dp)
+                            .graphicsLayer {
+                                scaleX = entranceScale.value * (1f + (tapScale.value - 1f) * 0.5f)
+                                scaleY = entranceScale.value * (1f + (tapScale.value - 1f) * 0.5f)
+                                alpha = entranceAlpha.value
+                                translationY = offsetY.dp.toPx() * 1.25f
+                                rotationZ = -rotationDegrees * 1.5f - tapRotation.value * 0.8f
+                            }
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.45f),
+                                        Color(0x55E0F2FE),
+                                        Color(0x40F472B6)
+                                    )
+                                )
+                            )
+                            .border(
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.8f)),
+                                shape = CircleShape
+                            )
                     )
+                }
 
+                // Tiny Floating Soap Bubble 2 (45.dp)
+                if (smallBubbleResId != null) {
+                    Image(
+                        painter = painterResource(id = smallBubbleResId),
+                        contentDescription = "작은 비눗방울 2",
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 10.dp, y = (-36).dp)
+                            .size(45.dp)
+                            .graphicsLayer {
+                                scaleX = entranceScale.value * (1f + (tapScale.value - 1f) * 0.4f)
+                                scaleY = entranceScale.value * (1f + (tapScale.value - 1f) * 0.4f)
+                                alpha = entranceAlpha.value
+                                translationY = offsetY.dp.toPx() * 0.85f
+                                rotationZ = rotationDegrees * 2f + tapRotation.value * 1.0f
+                            }
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 10.dp, y = (-36).dp)
+                            .size(45.dp)
+                            .graphicsLayer {
+                                scaleX = entranceScale.value * (1f + (tapScale.value - 1f) * 0.4f)
+                                scaleY = entranceScale.value * (1f + (tapScale.value - 1f) * 0.4f)
+                                alpha = entranceAlpha.value
+                                translationY = offsetY.dp.toPx() * 0.85f
+                                rotationZ = rotationDegrees * 2f + tapRotation.value * 1.0f
+                            }
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.55f),
+                                        Color(0x66E0F2FE),
+                                        Color(0x443B82F6)
+                                    )
+                                )
+                            )
+                            .border(
+                                border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.85f)),
+                                shape = CircleShape
+                            )
+                    )
+                }
+
+                // Main 3D Piggy Soap Bubble Container (190.dp)
+                Box(
+                    modifier = Modifier
+                        .size(190.dp)
+                        .graphicsLayer {
+                            scaleX = entranceScale.value * tapScale.value
+                            scaleY = entranceScale.value * tapScale.value
+                            alpha = entranceAlpha.value
+                            translationY = offsetY.dp.toPx()
+                            rotationZ = rotationDegrees + tapRotation.value
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                     if (piggyResId != null) {
                         Image(
                             painter = painterResource(id = piggyResId),
                             contentDescription = "돼지 저금통 마스코트",
-                            modifier = Modifier.size(145.dp)
+                            modifier = Modifier.size(190.dp)
                         )
                     } else {
                         Text(
                             text = "🐷 💰",
-                            fontSize = 72.sp
+                            fontSize = 80.sp
                         )
                     }
                 }
