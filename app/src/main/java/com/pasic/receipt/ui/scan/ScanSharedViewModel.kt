@@ -32,6 +32,8 @@ data class ScanUiState(
     val isScanning: Boolean = false,
     val scanStep: Int = 1, // 1: 텍스트 스캔 중, 2: 상호명 및 금액 추출 중, 3: 카테고리 자동 분류 중
     val isStepDone: Boolean = false, // 단계 완료 체크 아이콘 팝업 표시 여부
+    val isScanFailed: Boolean = false, // 영수증 인식 실패 상태
+    val capturedBitmap: Bitmap? = null, // 분석 중인 캡처 정지 화면 이미지
     val ocrResult: OcrResult? = null,
     val customCategories: List<CategoryItem> = listOf(
         CategoryItem("식비", "#FEF3C7"),
@@ -59,7 +61,16 @@ class ScanSharedViewModel @Inject constructor(
     fun cancelScanning() {
         scanningJob?.cancel()
         scanningJob = null
-        _uiState.update { it.copy(isScanning = false, scanStep = 1, isStepDone = false) }
+        _uiState.update { it.copy(isScanning = false, scanStep = 1, isStepDone = false, capturedBitmap = null, isScanFailed = false) }
+    }
+
+    fun resetScanFailure() {
+        _uiState.update { it.copy(isScanFailed = false, isScanning = false, scanStep = 1, isStepDone = false, capturedBitmap = null) }
+    }
+
+    fun simulateScanFailure() {
+        scanningJob?.cancel()
+        _uiState.update { it.copy(isScanning = false, isScanFailed = true, capturedBitmap = null) }
     }
 
     private fun Bitmap.resizeForGemini(maxPx: Int = 1536): Bitmap {
@@ -73,46 +84,62 @@ class ScanSharedViewModel @Inject constructor(
         scanningJob?.cancel()
         scanningJob = viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isScanning = true, scanStep = 1, isStepDone = false) }
-
                 // 1536px 리사이징
                 val resized = bitmap.resizeForGemini(1536)
+                _uiState.update { it.copy(isScanning = true, isScanFailed = false, scanStep = 1, isStepDone = false, capturedBitmap = resized) }
+
                 val savedPath = ReceiptImageStorage.saveBitmap(context, resized)
-                delay(600)
+                delay(700)
 
                 // 1단계 완료 ➔ 체크 팝업
                 _uiState.update { it.copy(isStepDone = true) }
-                delay(450)
+                delay(750)
 
-                // 2단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                // 2단계 시작
                 _uiState.update { it.copy(scanStep = 2, isStepDone = false) }
                 val existingCats = _uiState.value.customCategories.map { it.name }
                 val result = ReceiptOcrEngine.processBitmap(resized, savedPath, existingCats)
 
                 // 2단계 완료 ➔ 체크 팝업
                 _uiState.update { it.copy(isStepDone = true) }
-                delay(450)
+                delay(750)
 
-                // 3단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                // 영수증 인식 실패 조건 검사 (신뢰도가 너무 낮거나 필수 정보 없음)
+                if (result.confidenceScore < 40 || (result.merchantName.isBlank() && result.totalAmount == 0.0)) {
+                    _uiState.update {
+                        it.copy(
+                            isScanning = false,
+                            isScanFailed = true,
+                            scanStep = 1,
+                            isStepDone = false,
+                            capturedBitmap = null
+                        )
+                    }
+                    return@launch
+                }
+
+                // 3단계 시작
                 _uiState.update { it.copy(scanStep = 3, isStepDone = false) }
-                delay(500)
+                delay(600)
 
                 // 3단계 완료 ➔ 체크 팝업
                 _uiState.update { it.copy(isStepDone = true) }
-                delay(450)
+                delay(750)
 
                 _uiState.update {
                     it.copy(
                         isScanning = false,
+                        isScanFailed = false,
                         scanStep = 1,
                         isStepDone = false,
+                        capturedBitmap = null,
                         ocrResult = result
                     )
                 }
                 onComplete()
             } catch (e: Exception) {
                 e.printStackTrace()
-                _uiState.update { it.copy(isScanning = false, scanStep = 1, isStepDone = false) }
+                _uiState.update { it.copy(isScanning = false, isScanFailed = true, scanStep = 1, isStepDone = false, capturedBitmap = null) }
             }
         }
     }
@@ -121,44 +148,69 @@ class ScanSharedViewModel @Inject constructor(
         scanningJob?.cancel()
         scanningJob = viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isScanning = true, scanStep = 1, isStepDone = false) }
+                val galleryBitmap = try {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        android.graphics.ImageDecoder.decodeBitmap(android.graphics.ImageDecoder.createSource(context.contentResolver, uri))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        android.provider.MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                    }
+                } catch (e: Exception) { null }
+
+                _uiState.update { it.copy(isScanning = true, isScanFailed = false, scanStep = 1, isStepDone = false, capturedBitmap = galleryBitmap) }
 
                 val savedPath = ReceiptImageStorage.copyUriToAppStorage(context, uri) ?: ""
-                delay(600)
+                delay(700)
 
                 // 1단계 완료 ➔ 체크 팝업
                 _uiState.update { it.copy(isStepDone = true) }
-                delay(450)
+                delay(750)
 
-                // 2단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                // 2단계 시작
                 _uiState.update { it.copy(scanStep = 2, isStepDone = false) }
                 val existingCats = _uiState.value.customCategories.map { it.name }
                 val result = ReceiptOcrEngine.processImage(context, uri, savedPath, existingCats)
 
                 // 2단계 완료 ➔ 체크 팝업
                 _uiState.update { it.copy(isStepDone = true) }
-                delay(450)
+                delay(750)
 
-                // 3단계 시작 ➔ 아래에서 위로 수직 슬라이드
+                // 영수증 인식 실패 조건 검사
+                if (result.confidenceScore < 40 || (result.merchantName.isBlank() && result.totalAmount == 0.0)) {
+                    _uiState.update {
+                        it.copy(
+                            isScanning = false,
+                            isScanFailed = true,
+                            scanStep = 1,
+                            isStepDone = false,
+                            capturedBitmap = null
+                        )
+                    }
+                    return@launch
+                }
+
+                // 3단계 시작
                 _uiState.update { it.copy(scanStep = 3, isStepDone = false) }
-                delay(500)
+                delay(600)
 
                 // 3단계 완료 ➔ 체크 팝업
                 _uiState.update { it.copy(isStepDone = true) }
-                delay(450)
+                delay(750)
 
                 _uiState.update {
                     it.copy(
                         isScanning = false,
+                        isScanFailed = false,
                         scanStep = 1,
                         isStepDone = false,
+                        capturedBitmap = null,
                         ocrResult = result
                     )
                 }
                 onComplete()
             } catch (e: Exception) {
                 android.util.Log.e("ScanSharedViewModel", "processGalleryUri error: ${e.message}", e)
-                _uiState.update { it.copy(isScanning = false, scanStep = 1, isStepDone = false) }
+                _uiState.update { it.copy(isScanning = false, isScanFailed = true, scanStep = 1, isStepDone = false, capturedBitmap = null) }
             }
         }
     }

@@ -48,6 +48,7 @@ import com.pasic.receipt.ui.scan.camera.CameraPreviewView
 import com.pasic.receipt.ui.scan.camera.imageProxyToBitmap
 import com.pasic.receipt.ui.scan.components.AiScanningOverlay
 import com.pasic.receipt.ui.scan.components.CameraHelpDialog
+import com.pasic.receipt.ui.scan.components.ReceiptScanFailureDialog
 import com.pasic.receipt.ui.scan.components.ReceiptScanOverlay
 import com.pasic.receipt.ui.scan.util.loadLatestGalleryThumbnail
 
@@ -226,6 +227,7 @@ fun CameraScanScreen(
                 AiScanningOverlay(
                     scanStep = uiState.scanStep,
                     isStepDone = uiState.isStepDone,
+                    capturedBitmap = uiState.capturedBitmap,
                     onCancel = { viewModel.cancelScanning() }
                 )
             }
@@ -233,6 +235,18 @@ fun CameraScanScreen(
             // 6. Camera Help Dialog
             if (showHelpDialog) {
                 CameraHelpDialog(onDismiss = { showHelpDialog = false })
+            }
+
+            // 7. Receipt Scan Failure Dialog
+            if (uiState.isScanFailed) {
+                ReceiptScanFailureDialog(
+                    onRetry = { viewModel.resetScanFailure() },
+                    onContactSupport = {
+                        viewModel.resetScanFailure()
+                        onClose()
+                    },
+                    onDismiss = { viewModel.resetScanFailure() }
+                )
             }
         }
     }
