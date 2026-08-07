@@ -16,6 +16,8 @@ class ReceiptRepository @Inject constructor(
 
     fun getTotalSpendingKrw(): Flow<Double?> = receiptDao.getTotalSpendingKrw()
 
+    fun getReceiptById(id: Long): Flow<ReceiptEntity?> = receiptDao.getReceiptById(id)
+
     suspend fun insertReceipt(receipt: ReceiptEntity): Long = receiptDao.insertReceipt(receipt)
 
     suspend fun softDeleteReceipt(id: Long) = receiptDao.softDeleteReceipt(id)

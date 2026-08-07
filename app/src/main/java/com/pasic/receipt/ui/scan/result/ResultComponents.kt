@@ -1,6 +1,12 @@
 package com.pasic.receipt.ui.scan.result
 
 import android.graphics.BitmapFactory
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,8 +54,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pasic.receipt.R
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.composables.icons.lucide.ArrowLeft
@@ -254,6 +262,17 @@ fun AiCategorySuggestionCard(
     onCreateCategory: () -> Unit,
     onCustomInput: () -> Unit
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "BubbleFloating")
+    val offsetY by infiniteTransition.animateFloat(
+        initialValue = -4f,
+        targetValue = 4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "BubbleOffsetY"
+    )
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = Color(0xFFF8FAFC),
@@ -267,20 +286,16 @@ fun AiCategorySuggestionCard(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
+                Image(
+                    painter = painterResource(id = R.drawable.img_bubble_small),
+                    contentDescription = "AI 카테고리 추천 아이콘",
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .size(46.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFEFF6FF))
-                ) {
-                    Icon(
-                        imageVector = Lucide.Sparkles,
-                        contentDescription = "AI 추천",
-                        tint = Color(0xFF2563EB),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                        .graphicsLayer {
+                            translationY = offsetY.dp.toPx()
+                        }
+                )
 
                 Spacer(modifier = Modifier.width(14.dp))
 
@@ -699,5 +714,17 @@ fun parseHexColor(hex: String): Color {
         Color(colorInt)
     } catch (e: Exception) {
         Color(0xFFFEF3C7)
+    }
+}
+
+fun getCategoryBorderColor(hex: String): Color {
+    return when (hex.uppercase().trim()) {
+        "#DBEAFE" -> Color(0xFF2563EB) // 연파랑 ➔ 블루
+        "#DCFCE7" -> Color(0xFF16A34A) // 연초록 ➔ 그린
+        "#FEF3C7" -> Color(0xFFD97706) // 연노랑 ➔ 앰버
+        "#FCE7F3", "#FFE4E6" -> Color(0xFFE11D48) // 연핑크 ➔ 로즈
+        "#F3E8FF", "#E0E7FF" -> Color(0xFF9333EA) // 연보라 ➔ 퍼플
+        "#CCFBF1" -> Color(0xFF0D9488) // 연틸 ➔ 틸
+        else -> Color(0xFF2563EB) // 기본 ➔ 메인 블루
     }
 }

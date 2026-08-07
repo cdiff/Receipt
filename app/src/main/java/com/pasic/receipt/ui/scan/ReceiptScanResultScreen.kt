@@ -57,6 +57,7 @@ import com.pasic.receipt.ui.scan.result.ReceiptDateTimePickerBottomSheet
 import com.pasic.receipt.ui.scan.result.ReceiptPreviewCard
 import com.pasic.receipt.ui.scan.result.ReceiptSaveSuccessDialog
 import com.pasic.receipt.ui.scan.result.TaxWarningBanner
+import com.pasic.receipt.ui.scan.result.getCategoryBorderColor
 import com.pasic.receipt.ui.scan.result.parseHexColor
 import com.pasic.receipt.ui.theme.ScreenBackground
 
@@ -79,8 +80,20 @@ fun ReceiptScanResultScreen(
     }
     var currency by remember(ocrResult) { mutableStateOf(ocrResult?.currency ?: "KRW") }
     var businessNumber by remember(ocrResult) { mutableStateOf(ocrResult?.businessNumber ?: "") }
-    var selectedCategory by remember(ocrResult) { mutableStateOf(ocrResult?.category ?: "미분류") }
-    var selectedCategoryColor by remember(ocrResult) { mutableStateOf(ocrResult?.categoryColor ?: "#F1F5F9") }
+    
+    // AI Category Suggestion state
+    val suggestedCategory = ocrResult?.suggestedNewCategory ?: ""
+    var isAiCatSuggestionDismissed by remember(ocrResult) { mutableStateOf(false) }
+    val showAiCategoryCard = suggestedCategory.isNotBlank() &&
+            uiState.customCategories.none { it.name == suggestedCategory } &&
+            !isAiCatSuggestionDismissed
+
+    var selectedCategory by remember(ocrResult) {
+        mutableStateOf(if (showAiCategoryCard) "미분류" else (ocrResult?.category ?: "미분류"))
+    }
+    var selectedCategoryColor by remember(ocrResult) {
+        mutableStateOf(if (showAiCategoryCard) "#F1F5F9" else (ocrResult?.categoryColor ?: "#F1F5F9"))
+    }
     var confidenceScore by remember(ocrResult) { mutableStateOf(ocrResult?.confidenceScore ?: 30) }
 
     // Dialog & BottomSheet Visibility states
@@ -92,13 +105,6 @@ fun ReceiptScanResultScreen(
 
 
     val totalAmountDouble = amountString.toDoubleOrNull() ?: 0.0
-
-    // AI Category Suggestion state
-    val suggestedCategory = ocrResult?.suggestedNewCategory ?: ""
-    var isAiCatSuggestionDismissed by remember(ocrResult) { mutableStateOf(false) }
-    val showAiCategoryCard = suggestedCategory.isNotBlank() &&
-            uiState.customCategories.none { it.name == suggestedCategory } &&
-            !isAiCatSuggestionDismissed
 
     Box(
         modifier = Modifier
@@ -246,6 +252,7 @@ fun ReceiptScanResultScreen(
                 ) {
                     uiState.customCategories.forEach { categoryItem ->
                         val isSelected = selectedCategory == categoryItem.name
+                        val accentColor = getCategoryBorderColor(categoryItem.colorHex)
                         Surface(
                             onClick = {
                                 selectedCategory = categoryItem.name
@@ -255,7 +262,7 @@ fun ReceiptScanResultScreen(
                             color = if (isSelected) parseHexColor(categoryItem.colorHex) else Color.White,
                             border = androidx.compose.foundation.BorderStroke(
                                 width = if (isSelected) 1.5.dp else 1.dp,
-                                color = if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0)
+                                color = if (isSelected) accentColor else Color(0xFFE2E8F0)
                             ),
                             modifier = Modifier.height(40.dp)
                         ) {
@@ -267,7 +274,7 @@ fun ReceiptScanResultScreen(
                                     text = categoryItem.name,
                                     fontSize = 14.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color(0xFF1E293B) else Color(0xFF64748B)
+                                    color = if (isSelected) accentColor else Color(0xFF64748B)
                                 )
                             }
                         }
@@ -348,7 +355,10 @@ fun ReceiptScanResultScreen(
                             confidence = confidenceScore,
                             category = selectedCategory,
                             categoryColor = selectedCategoryColor,
-                            imagePath = ocrResult?.imagePath ?: ""
+                            imagePath = ocrResult?.imagePath ?: "",
+                            paymentMethod = ocrResult?.paymentMethod ?: "신용카드",
+                            proofType = ocrResult?.proofType ?: "일반영수증",
+                            vatAmount = ocrResult?.vatAmount
                         )
                         showSuccessDialog = true
                     },

@@ -26,6 +26,9 @@ data class OcrResult(
     val category: String = "식비",
     val categoryColor: String = "#FEF3C7",
     val suggestedNewCategory: String = "",
+    val paymentMethod: String = "신용카드",
+    val proofType: String = "일반영수증",
+    val vatAmount: Double? = null,
     val imagePath: String = ""
 )
 
@@ -38,10 +41,13 @@ object ReceiptOcrEngine {
             "totalAmount"            to Schema.double(description = "최종 결제 금액 (숫자만, 예: 15500.0)"),
             "businessNumber"         to Schema.string(description = "사업자등록번호 'XXX-XX-XXXXX' 형식 (모르면 빈 문자열)"),
             "category"               to Schema.string(description = "기존 카테고리 목록 중 가장 적합한 이름 (없으면 미분류)"),
-            "suggestedNewCategory" to Schema.string(description = "기존 카테고리에 맞지 않는 경우 추천할 새 카테고리명. 적합하면 빈 문자열"),
+            "suggestedNewCategory"   to Schema.string(description = "기존 카테고리에 맞지 않는 경우 추천할 새 카테고리명. 적합하면 빈 문자열"),
+            "paymentMethod"          to Schema.string(description = "결제 수단 (예: 신용카드, 체크카드, 현금, 간편결제중 하나)"),
+            "proofType"              to Schema.string(description = "증빙 유형 (예: 일반영수증, 현금영수증, 세금계산서 중 하나)"),
+            "vatAmount"              to Schema.double(description = "영수증에 적힌 부가가치세 금액 (숫자만. 없으면 0.0)"),
             "confidence"             to Schema.integer(description = "0~100 사이 인식 신뢰도 점수")
         ),
-        optionalProperties = listOf("businessNumber", "category", "suggestedNewCategory")
+        optionalProperties = listOf("businessNumber", "category", "suggestedNewCategory", "paymentMethod", "proofType", "vatAmount")
     )
 
     private val generativeModel by lazy {
@@ -91,9 +97,12 @@ object ReceiptOcrEngine {
                 2. date: 결제 일시 (영수증 날짜와 시간)
                 3. totalAmount: 최종 결제 금액 (숫자만)
                 4. businessNumber: 사업자등록번호 "XXX-XX-XXXXX" (없으면 빈 문자열)
-                5. category: 현재 등록된 카테고리 목록 [$catListStr] 중에서 상호명/품목에 명확히 들어맞는 것이 있다면 해당 카테고리명을 선택하고, suggestedNewCategory는 빈 문자열로 하세요.
-                6. suggestedNewCategory: 기존 카테고리 목록에 없거나 애매한 새로운 종류(예: 디저트, 의류, 뷰티, 취미, 의료비 등)라면 category를 "미분류"로 하고, suggestedNewCategory에 한국어 카테고리 단어 하나를 추천하세요. 적합한 기존 카테고리가 이미 있다면 빈 문자열("")로 하세요.
-                7. confidence: 인식 신뢰도 점수 (0~100 정수)
+                5. category: 상호명 및 세부 품목을 분석하여 "대분류/소분류" 형식(예: 식비/카페, 식비/식당, 식비/디저트, 교통비/지하철, 교통비/택시, 사무용품/문구 등)으로 구체적으로 카테고리를 추출하세요.
+                6. suggestedNewCategory: 기존 카테고리 목록에 없거나 새로운 종류라면 추천 카테고리 단어 하나(예: 뷰티, 의료비, 취미 등)를 작성하고, 기존 항목과 일치하면 빈 문자열("")로 하세요.
+                7. paymentMethod: 영수증 문구/카드종류를 분석하여 "신용카드", "체크카드", "현금", "간편결제" 중 하나 선택 (확실치 않으면 "신용카드")
+                8. proofType: "일반영수증", "현금영수증", "세금계산서" 중 하나 선택 (확실치 않으면 "일반영수증")
+                9. vatAmount: 영수증에 표기된 부가세/부가세액 금액 (숫자만. 표기 없으면 0.0)
+                10. confidence: 인식 신뢰도 점수 (0~100 정수)
             """.trimIndent()
 
             val inputContent = content {
@@ -122,6 +131,16 @@ object ReceiptOcrEngine {
             val suggestedNewCategory = extractJsonValue(jsonText, "suggestedNewCategory").replace("#", "")
             val confidence = extractJsonValue(jsonText, "confidence").toIntOrNull()?.coerceIn(30, 100) ?: 85
 
+            var paymentMethod = extractJsonValue(jsonText, "paymentMethod").ifBlank { "신용카드" }
+            var proofType = extractJsonValue(jsonText, "proofType").ifBlank { "일반영수증" }
+            val extractedVat = extractJsonValue(jsonText, "vatAmount").toDoubleOrNull()
+            val vatAmount = if (extractedVat != null && extractedVat > 0.0) {
+                extractedVat
+            } else if (totalAmount > 0.0) {
+                Math.round(totalAmount / 11.0).toDouble()
+            } else {
+                null
+            }
 
             val (finalCategory, categoryColor) = inferCategory(merchantName, category)
 
@@ -135,6 +154,9 @@ object ReceiptOcrEngine {
                 category = finalCategory,
                 categoryColor = categoryColor,
                 suggestedNewCategory = suggestedNewCategory,
+                paymentMethod = paymentMethod,
+                proofType = proofType,
+                vatAmount = vatAmount,
                 imagePath = imagePath
             )
         } catch (e: Exception) {

@@ -264,10 +264,14 @@ class ScanSharedViewModel @Inject constructor(
         confidence: Int,
         category: String,
         categoryColor: String,
-        imagePath: String
+        imagePath: String,
+        paymentMethod: String = "신용카드",
+        proofType: String = "일반영수증",
+        vatAmount: Double? = null
     ) {
         viewModelScope.launch {
             try {
+                val calculatedVat = vatAmount ?: if (amount > 0.0) Math.round(amount / 11.0).toDouble() else null
                 val entity = ReceiptEntity(
                     merchantName = merchantName.ifBlank { "알 수 없는 상호" },
                     date = date,
@@ -277,7 +281,10 @@ class ScanSharedViewModel @Inject constructor(
                     ocrConfidence = confidence,
                     category = category,
                     categoryColor = categoryColor,
-                    imagePath = imagePath
+                    imagePath = imagePath,
+                    paymentMethod = paymentMethod.ifBlank { "신용카드" },
+                    proofType = proofType.ifBlank { "일반영수증" },
+                    vatAmount = calculatedVat
                 )
                 repository.insertReceipt(entity)
                 _uiState.update { it.copy(isSaveSuccess = true, errorMessage = null) }

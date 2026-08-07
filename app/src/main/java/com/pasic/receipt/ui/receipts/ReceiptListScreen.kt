@@ -80,6 +80,7 @@ fun ReceiptListScreen(
     onNavigateToScan: () -> Unit = {},
     onNavigateToExport: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToDetail: (Long) -> Unit = {},
     viewModel: ReceiptListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -190,7 +191,10 @@ fun ReceiptListScreen(
                             items = receiptsOnDate,
                             key = { it.id }
                         ) { receipt ->
-                            ReceiptListItemRow(receipt = receipt)
+                            ReceiptListItemRow(
+                                receipt = receipt,
+                                onClick = { onNavigateToDetail(receipt.id) }
+                            )
                             Spacer(modifier = Modifier.height(10.dp))
                         }
                     }
@@ -415,11 +419,13 @@ private fun FilterChipRow(
  */
 @Composable
 private fun ReceiptListItemRow(
-    receipt: ReceiptEntity
+    receipt: ReceiptEntity,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

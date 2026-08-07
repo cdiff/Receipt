@@ -21,6 +21,9 @@ interface ReceiptDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReceipt(receipt: ReceiptEntity): Long
 
+    @Query("SELECT * FROM receipts WHERE id = :id AND isDeleted = 0 LIMIT 1")
+    fun getReceiptById(id: Long): Flow<ReceiptEntity?>
+
     @Query("UPDATE receipts SET isDeleted = 1, deletedAt = :deletedAt WHERE id = :id")
     suspend fun softDeleteReceipt(id: Long, deletedAt: Long = System.currentTimeMillis())
 }
