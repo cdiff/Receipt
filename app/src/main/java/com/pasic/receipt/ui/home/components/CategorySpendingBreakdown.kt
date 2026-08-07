@@ -28,12 +28,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.composables.icons.lucide.Briefcase
-import com.composables.icons.lucide.Bus
-import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Tag
-import com.composables.icons.lucide.Utensils
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.ui.theme.CategoryThemeRegistry
 import com.pasic.receipt.ui.theme.TextMuted
 import com.pasic.receipt.ui.theme.TextPrimary
 import java.text.NumberFormat
@@ -66,17 +62,17 @@ fun CategorySpendingBreakdown(
             val count = catReceipts.size
             val pct = if (overallSum > 0) ((sum / overallSum) * 100).toInt() else 0
 
-            val (icon, badgeBg, iconColor, progressColor) = getCategoryStyling(catName)
+            val theme = CategoryThemeRegistry.getTheme(catName)
 
             CategoryBreakdownData(
                 name = catName,
                 totalAmount = sum,
                 count = count,
                 percentage = pct,
-                icon = icon,
-                badgeBgColor = badgeBg,
-                iconColor = iconColor,
-                progressColor = progressColor
+                icon = theme.icon,
+                badgeBgColor = theme.badgeBgColor,
+                iconColor = theme.iconColor,
+                progressColor = theme.progressColor
             )
         }
             .sortedByDescending { it.totalAmount }
@@ -215,46 +211,4 @@ private fun CategorySpendingCard(
     }
 }
 
-private fun getCategoryStyling(categoryName: String): CategoryStyling {
-    return when {
-        categoryName.contains("식비") || categoryName.contains("외식") || categoryName.contains("카페") -> {
-            CategoryStyling(
-                icon = Lucide.Utensils,
-                badgeBg = Color(0xFFDBEAFE),
-                iconColor = Color(0xFF2563EB),
-                progressColor = Color(0xFF2563EB)
-            )
-        }
-        categoryName.contains("교통") || categoryName.contains("주유") || categoryName.contains("택시") -> {
-            CategoryStyling(
-                icon = Lucide.Bus,
-                badgeBg = Color(0xFFFFEDD5),
-                iconColor = Color(0xFFEA580C),
-                progressColor = Color(0xFFEA580C)
-            )
-        }
-        categoryName.contains("사무") || categoryName.contains("용품") || categoryName.contains("쇼핑") -> {
-            CategoryStyling(
-                icon = Lucide.Briefcase,
-                badgeBg = Color(0xFFF3E8FF),
-                iconColor = Color(0xFF9333EA),
-                progressColor = Color(0xFF9333EA)
-            )
-        }
-        else -> {
-            CategoryStyling(
-                icon = Lucide.Tag,
-                badgeBg = Color(0xFFF1F5F9),
-                iconColor = Color(0xFF64748B),
-                progressColor = Color(0xFF334155)
-            )
-        }
-    }
-}
 
-private data class CategoryStyling(
-    val icon: ImageVector,
-    val badgeBg: Color,
-    val iconColor: Color,
-    val progressColor: Color
-)
