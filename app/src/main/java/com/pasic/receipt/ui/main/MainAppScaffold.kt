@@ -126,7 +126,10 @@ fun MainAppScaffold(
                                 }
                             },
                             onNavigateToExport = {},
-                            onNavigateToSettings = {}
+                            onNavigateToSettings = {},
+                            onNavigateToDetail = { id ->
+                                navController.navigate("receipt_detail/$id")
+                            }
                         )
                     }
 
@@ -170,12 +173,33 @@ fun MainAppScaffold(
                             }
                         )
                     }
+
+                    // 4. 영수증 상세 화면 (iOS 스타일 슬라이드 전환)
+                    composable(
+                        route = "receipt_detail/{receiptId}",
+                        enterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
+                        exitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popEnterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popExitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } }
+                    ) { backStackEntry ->
+                        val receiptIdStr = backStackEntry.arguments?.getString("receiptId") ?: "0"
+                        val receiptId = receiptIdStr.toLongOrNull() ?: 0L
+                        com.pasic.receipt.ui.receipts.ReceiptDetailScreen(
+                            receiptId = receiptId,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToEdit = { id ->
+                                // 편집 기능 바텀시트/화면 확장 가능
+                            }
+                        )
+                    }
                 } // NavHost
             } // safeDrawingPadding Box
         } // Surface
 
-        // 단 1개의 공통 탭바 — 스캔/결과 모달 진입 시 숨김 처리
-        if (currentRoute !in listOf("scan", "scan_result")) {
+        // 단 1개의 공통 탭바 — 스캔/결과/상세 모달 진입 시 숨김 처리
+        if (currentRoute !in listOf("scan", "scan_result") && !currentRoute.startsWith("receipt_detail")) {
             ReceiptBottomNavigation(
                 currentRoute = currentRoute,
                 hazeState = hazeState,
