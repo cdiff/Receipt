@@ -21,4 +21,7 @@ class ReceiptRepository @Inject constructor(
     suspend fun insertReceipt(receipt: ReceiptEntity): Long = receiptDao.insertReceipt(receipt)
 
     suspend fun softDeleteReceipt(id: Long) = receiptDao.softDeleteReceipt(id)
+
+    suspend fun getReceiptsByDateRange(startMs: Long, endMs: Long): List<ReceiptEntity> =
+        receiptDao.getReceiptsByDateRange(startMs, endMs)
 }

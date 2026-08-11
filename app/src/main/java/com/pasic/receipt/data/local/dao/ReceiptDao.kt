@@ -26,4 +26,7 @@ interface ReceiptDao {
 
     @Query("UPDATE receipts SET isDeleted = 1, deletedAt = :deletedAt WHERE id = :id")
     suspend fun softDeleteReceipt(id: Long, deletedAt: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM receipts WHERE isDeleted = 0 AND createdAt BETWEEN :startMs AND :endMs ORDER BY createdAt DESC")
+    suspend fun getReceiptsByDateRange(startMs: Long, endMs: Long): List<ReceiptEntity>
 }

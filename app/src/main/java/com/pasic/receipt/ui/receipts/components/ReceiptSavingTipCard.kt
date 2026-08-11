@@ -83,24 +83,24 @@ fun ReceiptSavingTipCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 14.dp, top = 14.dp, end = 34.dp, bottom = 14.dp),
+                        .padding(start = 16.dp, top = 14.dp, end = 34.dp, bottom = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val tipIconRes = if (diff > 10000) R.drawable.ic_saving_tip_alt else R.drawable.ic_saving_tip
 
                     Box(
-                        modifier = Modifier.size(63.dp),
+                        modifier = Modifier.size(36.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = painterResource(id = tipIconRes),
                             contentDescription = "절약 팁 3D 아이콘",
                             contentScale = ContentScale.Fit,
-                            modifier = Modifier.size(63.dp)
+                            modifier = Modifier.size(36.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(

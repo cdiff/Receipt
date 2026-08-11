@@ -49,17 +49,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.composables.icons.lucide.Car
 import com.composables.icons.lucide.ChevronLeft
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.ReceiptText
 import com.composables.icons.lucide.Search
-import com.composables.icons.lucide.ShoppingBag
 import com.composables.icons.lucide.SlidersHorizontal
-import com.composables.icons.lucide.Utensils
 import com.pasic.receipt.data.local.entity.ReceiptEntity
 import com.pasic.receipt.ui.components.DateRangePickerBottomSheet
+import com.pasic.receipt.ui.theme.CategoryThemeRegistry
 import com.pasic.receipt.ui.theme.TextMuted
 import com.pasic.receipt.ui.theme.TextPrimary
 import com.pasic.receipt.ui.theme.TextSecondary
@@ -422,6 +419,8 @@ private fun ReceiptListItemRow(
     receipt: ReceiptEntity,
     onClick: () -> Unit = {}
 ) {
+    val theme = CategoryThemeRegistry.getTheme(receipt.category)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -456,13 +455,13 @@ private fun ReceiptListItemRow(
                 modifier = Modifier
                     .size(46.dp)
                     .clip(CircleShape)
-                    .background(getThumbnailBgColor(receipt)),
+                    .background(theme.badgeBgColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = getCategoryIcon(receipt.category),
+                    imageVector = theme.icon,
                     contentDescription = receipt.category,
-                    tint = getThumbnailIconColor(receipt.category),
+                    tint = theme.iconColor,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -509,67 +508,18 @@ private fun ReceiptListItemRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(getTagBgColor(receipt.category))
+                    .background(theme.tagBgColor)
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = "#${receipt.category}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = getTagTextColor(receipt.category)
+                    color = theme.tagTextColor
                 )
             }
         }
     }
-}
-
-private fun getCategoryIcon(category: String) = when (category) {
-    "식비" -> Lucide.Utensils
-    "교통비" -> Lucide.Car
-    "사무용품" -> Lucide.ShoppingBag
-    else -> Lucide.ReceiptText
-}
-
-private fun getThumbnailBgColor(receipt: ReceiptEntity): Color {
-    return parseHexColor(receipt.categoryColor) ?: when (receipt.category) {
-        "식비" -> Color(0xFFFEF3C7)
-        "교통비" -> Color(0xFFDBEAFE)
-        "사무용품" -> Color(0xFFF3E8FF)
-        else -> Color(0xFFF1F5F9)
-    }
-}
-
-private fun parseHexColor(hexString: String): Color? {
-    return runCatching {
-        val cleanHex = hexString.replace("#", "")
-        val colorInt = cleanHex.toLong(16)
-        if (cleanHex.length == 6) {
-            Color(colorInt or 0xFF000000)
-        } else {
-            Color(colorInt)
-        }
-    }.getOrNull()
-}
-
-private fun getThumbnailIconColor(category: String) = when (category) {
-    "식비" -> Color(0xFFD97706)
-    "교통비" -> Color(0xFF2563EB)
-    "사무용품" -> Color(0xFF9333EA)
-    else -> Color(0xFF64748B)
-}
-
-private fun getTagBgColor(category: String) = when (category) {
-    "식비" -> Color(0xFFFFF7ED)
-    "교통비" -> Color(0xFFEFF6FF)
-    "사무용품" -> Color(0xFFFAF5FF)
-    else -> Color(0xFFF8FAFC)
-}
-
-private fun getTagTextColor(category: String) = when (category) {
-    "식비" -> Color(0xFFC2410C)
-    "교통비" -> Color(0xFF1D4ED8)
-    "사무용품" -> Color(0xFF7E22CE)
-    else -> Color(0xFF475569)
 }
 
 private fun formatAmount(amount: Double): String {

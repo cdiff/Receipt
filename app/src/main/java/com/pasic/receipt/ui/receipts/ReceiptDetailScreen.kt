@@ -50,11 +50,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.composables.icons.lucide.ArrowLeft
-import com.composables.icons.lucide.Copy
 import com.composables.icons.lucide.EllipsisVertical
 import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.RefreshCw
-import com.composables.icons.lucide.Trash2
 import com.pasic.receipt.data.local.entity.ReceiptEntity
 import com.pasic.receipt.ui.receipts.components.ImageZoomDialog
 import com.pasic.receipt.ui.receipts.components.ReceiptDetailHeader
@@ -220,9 +217,6 @@ fun ReceiptDetailScreen(
                                 onClick = {
                                     showMenu = false
                                     onNavigateToEdit(receiptId)
-                                },
-                                leadingIcon = {
-                                    Icon(Lucide.RefreshCw, contentDescription = null, tint = Color(0xFF0F172A))
                                 }
                             )
                             DropdownMenuItem(
@@ -230,9 +224,6 @@ fun ReceiptDetailScreen(
                                 onClick = {
                                     showMenu = false
                                     receipt?.let { shareReceiptInfo(context, it) }
-                                },
-                                leadingIcon = {
-                                    Icon(Lucide.Copy, contentDescription = null, tint = Color(0xFF0F172A))
                                 }
                             )
                             DropdownMenuItem(
@@ -240,9 +231,6 @@ fun ReceiptDetailScreen(
                                 onClick = {
                                     showMenu = false
                                     viewModel.deleteReceipt()
-                                },
-                                leadingIcon = {
-                                    Icon(Lucide.Trash2, contentDescription = null, tint = Color(0xFFEF4444))
                                 }
                             )
                         }
