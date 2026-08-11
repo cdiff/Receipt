@@ -29,6 +29,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pasic.receipt.ui.components.ReceiptBottomNavigation
+import com.pasic.receipt.ui.export.ExportScreen
 import com.pasic.receipt.ui.home.HomeScreen
 import com.pasic.receipt.ui.receipts.ReceiptListScreen
 import dev.chrisbanes.haze.HazeState
@@ -194,6 +195,14 @@ fun MainAppScaffold(
                             }
                         )
                     }
+
+                    // 5. 내보내기 화면
+                    composable("export") {
+                        ExportScreen(
+                            hazeState = hazeState,
+                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it }
+                        )
+                    }
                 } // NavHost
             } // safeDrawingPadding Box
         } // Surface
@@ -219,7 +228,7 @@ fun MainAppScaffold(
                             "receipts" -> navController.navigate("receipts") {
                                 launchSingleTop = true
                             }
-                            "export" -> {}
+                            "export" -> navController.navigate("export") { launchSingleTop = true }
                             "settings" -> {}
                         }
                     }

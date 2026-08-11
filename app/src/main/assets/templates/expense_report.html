@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>법인카드 지출결의서</title>
+<style>
+  @charset "UTF-8";
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 11px;
+    color: #000;
+    background: #fff;
+    padding: 20px;
+  }
+
+  /* 인쇄용 A4 */
+  @media print {
+    body { padding: 10mm; }
+    .no-print { display: none; }
+  }
+
+  /* 제목 */
+  .title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    text-decoration: underline;
+    margin-bottom: 14px;
+    letter-spacing: 2px;
+  }
+
+  /* 결재란 */
+  .approval-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+  .approval-table {
+    border-collapse: collapse;
+    width: 200px;
+  }
+  .approval-table th,
+  .approval-table td {
+    border: 1px solid #333;
+    text-align: center;
+    padding: 4px 6px;
+    font-size: 10px;
+    height: 28px;
+    width: 40px;
+  }
+  .approval-table th { background: #f5f5f5; font-weight: bold; }
+  .approval-table td { min-height: 36px; vertical-align: top; }
+
+  /* 헤더 정보 테이블 */
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+  }
+  .info-table td {
+    border: 1px solid #333;
+    padding: 5px 8px;
+    font-size: 11px;
+    height: 24px;
+  }
+  .info-table .label {
+    background: #f5f5f5;
+    font-weight: bold;
+    width: 80px;
+    text-align: center;
+  }
+  .info-table .value {
+    width: 200px;
+  }
+  .info-table .purpose-row td {
+    height: 36px;
+    vertical-align: top;
+  }
+
+  /* 안내 문구 */
+  .statement {
+    text-align: center;
+    margin: 10px 0 4px;
+    font-size: 11px;
+  }
+  .divider {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 11px;
+    letter-spacing: 6px;
+  }
+
+  /* 지출 내역 테이블 */
+  .expense-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+  }
+  .expense-table th {
+    border: 1px solid #333;
+    background: #f5f5f5;
+    text-align: center;
+    padding: 5px 4px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+  .expense-table td {
+    border: 1px solid #333;
+    text-align: center;
+    padding: 4px;
+    font-size: 10px;
+    height: 22px;
+  }
+  .expense-table td.left { text-align: left; padding-left: 6px; }
+  .expense-table td.right { text-align: right; padding-right: 6px; }
+  .expense-table .total-row td {
+    font-weight: bold;
+    background: #f5f5f5;
+    font-size: 11px;
+  }
+
+  /* 빈 행 */
+  .empty-row td { height: 22px; }
+</style>
+</head>
+<body>
+
+  <div class="title">법인카드 지출 결의서</div>
+
+  <!-- 결재란 -->
+  <div class="approval-section">
+    <table class="approval-table">
+      <tr>
+        <th>담당</th><th>팀장</th><th>과장</th><th>부장</th><th>사원</th>
+      </tr>
+      <tr>
+        <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 헤더 정보 -->
+  <table class="info-table">
+    <tr>
+      <td class="label">문서번호</td>
+      <td class="value">{{DOC_NUM}}</td>
+      <td class="label">작성일자</td>
+      <td>{{DATE}}</td>
+    </tr>
+    <tr>
+      <td class="label">결의부서</td>
+      <td class="value">{{DEPT}}</td>
+      <td class="label">작성자</td>
+      <td>{{AUTHOR}}</td>
+    </tr>
+    <tr>
+      <td class="label">보존기간</td>
+      <td class="value">&nbsp;</td>
+      <td class="label">확&nbsp;&nbsp;조</td>
+      <td>&nbsp;</td>
+    </tr>
+    <tr class="purpose-row">
+      <td class="label">적&nbsp;&nbsp;요</td>
+      <td colspan="3">{{PURPOSE}}</td>
+    </tr>
+  </table>
+
+  <!-- 안내 문구 -->
+  <p class="statement">아래와 같이 지출하고자 하오니 결재 후 자가 바랍니다.</p>
+  <p class="divider">- 이 하 -</p>
+
+  <!-- 지출 내역 -->
+  <table class="expense-table">
+    <thead>
+      <tr>
+        <th style="width:12%">날&nbsp;&nbsp;자</th>
+        <th style="width:20%">거 래 처 명</th>
+        <th style="width:20%">내&nbsp;&nbsp;&nbsp;역</th>
+        <th style="width:8%">부진</th>
+        <th style="width:14%">지&nbsp;&nbsp;출</th>
+        <th style="width:8%">기타</th>
+        <th style="width:18%">적&nbsp;&nbsp;&nbsp;요</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ROWS}}
+      <tr class="total-row">
+        <td colspan="4" style="text-align:right; padding-right:8px;">합&nbsp;&nbsp;&nbsp;계</td>
+        <td class="right">{{TOTAL}}</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>
