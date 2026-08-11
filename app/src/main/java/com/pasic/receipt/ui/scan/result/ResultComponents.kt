@@ -291,7 +291,8 @@ fun AiCategorySuggestionCard(
                     contentDescription = "AI 카테고리 추천 아이콘",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
-                        .size(46.dp)
+                        .padding(top = 4.dp)
+                        .size(36.dp)
                         .graphicsLayer {
                             translationY = offsetY.dp.toPx()
                         }
