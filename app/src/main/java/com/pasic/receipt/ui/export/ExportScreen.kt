@@ -115,25 +115,8 @@ fun ExportScreen(
                 .statusBarsPadding()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
-                .padding(top = 24.dp, bottom = 120.dp)
+                .padding(top = 16.dp, bottom = 120.dp)
         ) {
-
-            // ── 페이지 제목 ────────────────────────────────────────────
-            Text(
-                text = "영수증 내보내기",
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(
-                text = "영수증 데이터를 원하는 형식으로 내보내세요",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // ── 섹션 1. 조회 기간 선택 카드 ───────────────────────────────
             Box(

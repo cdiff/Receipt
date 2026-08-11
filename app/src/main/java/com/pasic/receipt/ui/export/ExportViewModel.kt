@@ -1,5 +1,6 @@
 package com.pasic.receipt.ui.export
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -251,25 +252,143 @@ class ExportViewModel @Inject constructor(
         })
     }
 
+    private suspend fun generatePdfReportFile(
+        context: Context,
+        receipts: List<ReceiptEntity>,
+        periodLabel: String
+    ): File = withContext(Dispatchers.IO) {
+        val dir = File(context.filesDir, "exports").apply { mkdirs() }
+        val pdfFile = File(dir, "expense_report_$periodLabel.pdf")
+
+        val pdfDocument = android.graphics.pdf.PdfDocument()
+        val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(595, 842, 1).create()
+        val page = pdfDocument.startPage(pageInfo)
+        val canvas = page.canvas
+
+        val titlePaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = 18f
+            isFakeBoldText = true
+        }
+        val textPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.DKGRAY
+            textSize = 11f
+        }
+        val headerPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(15, 23, 42)
+            textSize = 11f
+            isFakeBoldText = true
+        }
+        val linePaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.LTGRAY
+            strokeWidth = 1f
+        }
+
+        canvas.drawText("법인카드 지출 결의서 ($periodLabel)", 40f, 50f, titlePaint)
+        canvas.drawLine(40f, 65f, 555f, 65f, linePaint)
+
+        val totalAmount = receipts.sumOf { it.totalAmount }
+        val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
+        canvas.drawText("조회 기간: $periodLabel", 40f, 90f, textPaint)
+        canvas.drawText("총 건수: ${receipts.size}건", 220f, 90f, textPaint)
+        canvas.drawText("총 지출 금액: ${formatter.format(totalAmount.toLong())}원", 380f, 90f, textPaint)
+
+        canvas.drawLine(40f, 105f, 555f, 105f, linePaint)
+
+        canvas.drawText("날짜", 45f, 125f, headerPaint)
+        canvas.drawText("사용처(상호명)", 120f, 125f, headerPaint)
+        canvas.drawText("카테고리", 280f, 125f, headerPaint)
+        canvas.drawText("결제 수단", 370f, 125f, headerPaint)
+        canvas.drawText("금액(원)", 470f, 125f, headerPaint)
+
+        canvas.drawLine(40f, 135f, 555f, 135f, linePaint)
+
+        var y = 155f
+        receipts.take(28).forEach { r ->
+            canvas.drawText(r.date, 45f, y, textPaint)
+            val merchant = if (r.merchantName.length > 12) r.merchantName.take(12) + ".." else r.merchantName
+            canvas.drawText(merchant, 120f, y, textPaint)
+            canvas.drawText(r.category, 280f, y, textPaint)
+            canvas.drawText(r.paymentMethod, 370f, y, textPaint)
+            canvas.drawText(formatter.format(r.totalAmount.toLong()), 470f, y, textPaint)
+
+            y += 22f
+            canvas.drawLine(40f, y - 10f, 555f, y - 10f, linePaint)
+        }
+
+        pdfDocument.finishPage(page)
+        pdfFile.outputStream().use { out ->
+            pdfDocument.writeTo(out)
+        }
+        pdfDocument.close()
+
+        pdfFile
+    }
+
+    private suspend fun prepareShareFile(context: Context): Pair<File, String> = withContext(Dispatchers.IO) {
+        val (startMs, endMs) = getDateRangeMs()
+        val receipts = repository.getReceiptsByDateRange(startMs, endMs)
+        val periodLabel = getPeriodLabel()
+        val dir = File(context.filesDir, "exports").apply { mkdirs() }
+
+        if (_uiState.value.selectedFormat == ExportFormat.PDF) {
+            val pdfFile = generatePdfReportFile(context, receipts, periodLabel)
+            Pair(pdfFile, "application/pdf")
+        } else if (_uiState.value.includeImages) {
+            val zipFile = File(dir, "receipts_$periodLabel.zip")
+            val baos = ByteArrayOutputStream()
+            ZipOutputStream(baos).use { zos ->
+                val csvContent = buildCsvString(receipts, includeImageColumn = true)
+                val csvEntry = ZipEntry("receipts_$periodLabel.csv")
+                zos.putNextEntry(csvEntry)
+                zos.write(csvContent.toByteArray(Charsets.UTF_8))
+                zos.closeEntry()
+
+                receipts.forEachIndexed { index, receipt ->
+                    receipt.imagePath?.let { imgPath ->
+                        val imgFile = File(imgPath)
+                        if (imgFile.exists()) {
+                            val ext = imgFile.extension.ifEmpty { "jpg" }
+                            val entryName = "images/receipt_${index + 1}_${receipt.date.replace("-", "")}.$ext"
+                            val imgEntry = ZipEntry(entryName)
+                            zos.putNextEntry(imgEntry)
+                            imgFile.inputStream().use { it.copyTo(zos) }
+                            zos.closeEntry()
+                        }
+                    }
+                }
+            }
+            zipFile.writeBytes(baos.toByteArray())
+            Pair(zipFile, "application/zip")
+        } else {
+            val csvFile = File(dir, "receipts_$periodLabel.csv")
+            val csvContent = buildCsvString(receipts, includeImageColumn = false)
+            csvFile.writeText(csvContent, Charsets.UTF_8)
+            Pair(csvFile, "text/csv")
+        }
+    }
+
     fun shareViaEmail(context: Context) {
         viewModelScope.launch {
             _uiState.update { it.copy(isGenerating = true) }
             try {
-                val (startMs, endMs) = getDateRangeMs()
-                val receipts = repository.getReceiptsByDateRange(startMs, endMs)
-                val csv = buildCsvString(receipts)
-                val file = withContext(Dispatchers.IO) {
-                    val dir = File(context.filesDir, "exports").apply { mkdirs() }
-                    File(dir, "receipts_${getPeriodLabel()}.csv").also { it.writeText(csv, Charsets.UTF_8) }
-                }
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val (file, _) = prepareShareFile(context)
+                val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "message/rfc822"
                     putExtra(Intent.EXTRA_SUBJECT, "[영수증 내보내기] ${getPeriodLabel()} 지출 내역")
+                    putExtra(Intent.EXTRA_TEXT, "안녕하세요,\n요청하신 ${getPeriodLabel()} 영수증 내역 파일(${file.name})을 첨부합니다.")
                     putExtra(Intent.EXTRA_STREAM, uri)
+                    clipData = ClipData.newRawUri(file.name, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(intent, "이메일 전송").apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+                val chooser = Intent.createChooser(intent, "이메일 전송").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(chooser)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "이메일 전송 중 오류가 발생했습니다: ${e.message}") }
             } finally {
                 _uiState.update { it.copy(isGenerating = false) }
             }
@@ -280,20 +399,22 @@ class ExportViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isGenerating = true) }
             try {
-                val (startMs, endMs) = getDateRangeMs()
-                val receipts = repository.getReceiptsByDateRange(startMs, endMs)
-                val csv = buildCsvString(receipts)
-                val file = withContext(Dispatchers.IO) {
-                    val dir = File(context.filesDir, "exports").apply { mkdirs() }
-                    File(dir, "receipts_${getPeriodLabel()}.csv").also { it.writeText(csv, Charsets.UTF_8) }
-                }
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val (file, mimeType) = prepareShareFile(context)
+                val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/csv"
+                    type = mimeType // "text/csv" / "application/zip" 또는 "*/*"
                     putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, "📄 [영수증 내보내기] ${getPeriodLabel()} 내역 파일입니다.")
+                    clipData = ClipData.newRawUri(file.name, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(intent, "메신저로 공유").apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+                val chooser = Intent.createChooser(intent, "메신저로 공유").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(chooser)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "메신저 공유 중 오류가 발생했습니다: ${e.message}") }
             } finally {
                 _uiState.update { it.copy(isGenerating = false) }
             }
