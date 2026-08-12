@@ -45,12 +45,15 @@ import com.pasic.receipt.ui.theme.TextSecondary
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PdfInfoBottomSheet(
+    initialAuthor: String = "",
+    initialDept: String = "",
+    initialPurpose: String = "",
     onDismiss: () -> Unit,
     onConfirm: (author: String, dept: String, purpose: String) -> Unit
 ) {
-    var author by remember { mutableStateOf("") }
-    var dept by remember { mutableStateOf("") }
-    var purpose by remember { mutableStateOf("") }
+    var author by remember { mutableStateOf(initialAuthor) }
+    var dept by remember { mutableStateOf(initialDept) }
+    var purpose by remember { mutableStateOf(initialPurpose) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 

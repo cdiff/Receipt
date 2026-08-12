@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.preferences.UserPreferencesRepository
 import com.pasic.receipt.data.repository.ReceiptRepository
 import com.pasic.receipt.util.PdfReportGenerator
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,6 +39,9 @@ data class ExportUiState(
     val formattedDateRangeText: String = "",
     val csvHeaderColumns: List<String> = listOf("날짜", "상호명", "금액", "카테고리", "결제수단", "사업자번호", "부가세", "증빙유형", "메모"),
     val selectedFormat: ExportFormat = ExportFormat.EXCEL,
+    val defaultAuthor: String = "",
+    val defaultDepartment: String = "",
+    val defaultPurpose: String = "",
     val includeAll: Boolean = true,
     val groupByCategory: Boolean = false,
     val includeImages: Boolean = true,
@@ -55,17 +59,37 @@ data class ExportUiState(
 
 @HiltViewModel
 class ExportViewModel @Inject constructor(
-    private val repository: ReceiptRepository
+    private val repository: ReceiptRepository,
+    private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExportUiState())
     val uiState: StateFlow<ExportUiState> = _uiState.asStateFlow()
+
+    private var hasInitializedDefaults = false
 
     init {
         val today = LocalDate.now()
         val start = today.withDayOfMonth(1)
         _uiState.update { it.copy(formattedDateRangeText = formatDateRangeText(start, today)) }
         refreshTargetCount()
+
+        viewModelScope.launch {
+            preferencesRepository.userPreferencesFlow.collect { prefs ->
+                val format = if (prefs.defaultExportFormat == "PDF") ExportFormat.PDF else ExportFormat.EXCEL
+                val columns = prefs.csvSelectedColumns.toList()
+                _uiState.update { state ->
+                    state.copy(
+                        defaultAuthor = prefs.defaultAuthor,
+                        defaultDepartment = prefs.defaultDepartment,
+                        defaultPurpose = prefs.defaultPurpose,
+                        selectedFormat = if (!hasInitializedDefaults) format else state.selectedFormat,
+                        csvHeaderColumns = if (!hasInitializedDefaults && columns.isNotEmpty()) columns else state.csvHeaderColumns
+                    )
+                }
+                hasInitializedDefaults = true
+            }
+        }
     }
 
     fun setCustomDateRange(startDate: LocalDate, endDate: LocalDate) {

@@ -457,6 +457,9 @@ fun ExportScreen(
         // ── PDF 정보 입력 바텀시트 ─────────────────────────────────────
         if (uiState.showPdfInfoSheet) {
             PdfInfoBottomSheet(
+                initialAuthor = uiState.defaultAuthor,
+                initialDept = uiState.defaultDepartment,
+                initialPurpose = uiState.defaultPurpose,
                 onDismiss = { viewModel.dismissPdfInfoSheet() },
                 onConfirm = { author, dept, purpose ->
                     viewModel.onPdfInfoConfirmed(context, author, dept, purpose)
