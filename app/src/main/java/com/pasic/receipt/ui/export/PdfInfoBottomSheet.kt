@@ -2,6 +2,8 @@ package com.pasic.receipt.ui.export
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
@@ -128,34 +131,51 @@ fun PdfInfoBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 버튼 Row
+            // 버튼 Row (높이 50.dp 확장)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // 건너뛰기 (빈칸 PDF 생성)
-                TextButton(
-                    onClick = { onConfirm("", "", "") },
-                    modifier = Modifier.weight(1f)
+                // 건너뛰기 (빈칸 PDF 생성 - 투명 배경)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            onConfirm("", "", "")
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "건너뛰기",
                         fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
                         color = TextSecondary
                     )
                 }
 
                 // PDF 생성하기
-                Button(
-                    onClick = { onConfirm(author, dept, purpose) },
-                    modifier = Modifier.weight(2f),
-                    colors = ButtonDefaults.buttonColors(containerColor = FabNavy),
-                    shape = RoundedCornerShape(12.dp)
+                Box(
+                    modifier = Modifier
+                        .weight(2f)
+                        .height(50.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(FabNavy)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            onConfirm(author, dept, purpose)
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "PDF 생성하기",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                 }
