@@ -203,6 +203,14 @@ fun MainAppScaffold(
                             onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it }
                         )
                     }
+
+                    // 6. 설정 화면
+                    composable("settings") {
+                        com.pasic.receipt.ui.settings.SettingsScreen(
+                            hazeState = hazeState,
+                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it }
+                        )
+                    }
                 } // NavHost
             } // safeDrawingPadding Box
         } // Surface
@@ -229,7 +237,7 @@ fun MainAppScaffold(
                                 launchSingleTop = true
                             }
                             "export" -> navController.navigate("export") { launchSingleTop = true }
-                            "settings" -> {}
+                            "settings" -> navController.navigate("settings") { launchSingleTop = true }
                         }
                     }
                 },
