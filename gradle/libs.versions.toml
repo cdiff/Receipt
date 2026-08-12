@@ -2,7 +2,7 @@
 agp = "8.7.2"
 kotlin = "2.1.0"
 ksp = "2.1.0-1.0.29"
-hilt = "2.51.1"
+hilt = "2.55"
 room = "2.6.1"
 coreKtx = "1.15.0"
 junit = "4.13.2"
@@ -25,8 +25,10 @@ camerax = "1.4.0"
 googleServicesPlugin = "4.5.0"
 firebaseBom = "34.17.0"
 lottie = "6.6.0"
+datastore = "1.1.2"
 
 [libraries]
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }

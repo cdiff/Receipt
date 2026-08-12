@@ -49,6 +49,7 @@ configurations.all {
         force("androidx.activity:activity-compose:1.9.3")
         force("androidx.core:core:1.15.0")
         force("androidx.core:core-ktx:1.15.0")
+        force("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.9.0")
     }
 }
 
@@ -57,6 +58,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.material)
 
     // Firebase AI Logic (Gemini via googleAI backend) & App Check Debug & Analytics
