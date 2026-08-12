@@ -1,9 +1,15 @@
 package com.pasic.receipt.ui.export
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -32,6 +39,7 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -54,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pasic.receipt.R
+import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Calendar
 import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.ChevronRight
@@ -112,11 +121,16 @@ fun ExportScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(hazeState)
-                .statusBarsPadding()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
-                .padding(top = 16.dp, bottom = 120.dp)
+                .padding(bottom = 120.dp)
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 공통 탑바
+            com.pasic.receipt.ui.components.MainCommonTopBar()
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // ── 섹션 1. 조회 기간 선택 카드 ───────────────────────────────
             Box(
@@ -139,35 +153,34 @@ fun ExportScreen(
                     }
                     .padding(horizontal = 18.dp, vertical = 16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // 좌측 텍스트 영역 (조회 기간 + 2026. 08. 01 ~ 08. 31)
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "조회 기간",
-                            fontSize = 12.sp,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "조회 기간",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = uiState.formattedDateRangeText,
                             fontSize = 16.sp,
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
+                        Icon(
+                            imageVector = Lucide.Calendar,
+                            contentDescription = "기간 선택",
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .offset(y = (-2).dp)
+                        )
                     }
-
-                    // 우측 달력 아이콘 (배경 없이 우측 끝에 배치)
-                    Icon(
-                        imageVector = Lucide.Calendar,
-                        contentDescription = "기간 선택",
-                        tint = Color(0xFF0F172A),
-                        modifier = Modifier.size(22.dp)
-                    )
                 }
             }
 
@@ -427,7 +440,7 @@ fun ExportScreen(
                     bgColor = Color(0xFFDBEAFE),
                     iconColor = Color(0xFF1D4ED8),
                     icon = { Icon(Lucide.Mail, null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(22.dp)) },
-                    onClick = { viewModel.shareViaEmail(context) }
+                    onClick = { viewModel.onEmailShareClicked(context) }
                 )
                 Spacer(modifier = Modifier.width(24.dp))
                 // 메신저 공유
@@ -436,7 +449,7 @@ fun ExportScreen(
                     bgColor = Color(0xFFFEF3C7),
                     iconColor = Color(0xFFD97706),
                     icon = { Icon(Lucide.MessageSquare, null, tint = Color(0xFFD97706), modifier = Modifier.size(22.dp)) },
-                    onClick = { viewModel.shareViaMessenger(context) }
+                    onClick = { viewModel.onMessengerShareClicked(context) }
                 )
             }
         }
@@ -446,8 +459,26 @@ fun ExportScreen(
             PdfInfoBottomSheet(
                 onDismiss = { viewModel.dismissPdfInfoSheet() },
                 onConfirm = { author, dept, purpose ->
-                    viewModel.generatePdf(context, author, dept, purpose)
+                    viewModel.onPdfInfoConfirmed(context, author, dept, purpose)
                 }
+            )
+        }
+
+        // ── PDF 미리보기 다이얼로그 ────────────────────────────────────
+        if (uiState.showPdfPreviewDialog && uiState.previewPdfFile != null) {
+            PdfPreviewDialog(
+                pdfFile = uiState.previewPdfFile!!,
+                onDismiss = { viewModel.dismissPdfPreviewDialog() },
+                onConfirmSave = { viewModel.confirmSavePdf(context) }
+            )
+        }
+
+        // ── 저장 완료 확인 다이얼로그 ─────────────────────────────────
+        if (uiState.showSaveSuccessDialog) {
+            PdfSaveSuccessDialog(
+                fileName = uiState.savedFileName,
+                savedFile = uiState.previewPdfFile,
+                onDismiss = { viewModel.dismissSaveSuccessDialog() }
             )
         }
 
@@ -608,18 +639,61 @@ private fun ExportOptionRow(
                 }
             }
         }
-        Checkbox(
-            checked = checked && enabled,
-            onCheckedChange = if (enabled) onCheckedChange else null,
-            enabled = enabled,
-            colors = CheckboxDefaults.colors(
-                checkedColor = FabNavy,
-                uncheckedColor = Color(0xFFCBD5E1),
-                disabledCheckedColor = Color(0xFFCBD5E1),
-                disabledUncheckedColor = Color(0xFFE2E8F0),
-                checkmarkColor = Color.White
-            )
+        val boxScale by animateFloatAsState(
+            targetValue = if (checked && enabled) 1f else 0.94f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "checkboxScale"
         )
+        val checkScale by animateFloatAsState(
+            targetValue = if (checked && enabled) 1f else 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "checkIconScale"
+        )
+
+        // 23dp x 23dp 고정 크기 + 바운시 스케일 클릭 모션 애니메이션
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = boxScale
+                    scaleY = boxScale
+                }
+                .size(23.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(
+                    if (checked && enabled) FabNavy
+                    else if (!enabled) Color(0xFFF8FAFC)
+                    else Color.White
+                )
+                .border(
+                    width = 1.5.dp,
+                    color = if (checked && enabled) FabNavy
+                    else if (!enabled) Color(0xFFE2E8F0)
+                    else Color(0xFFCBD5E1),
+                    shape = RoundedCornerShape(6.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (checkScale > 0.01f) {
+                Icon(
+                    imageVector = Lucide.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(14.dp)
+                        .graphicsLayer {
+                            scaleX = checkScale
+                            scaleY = checkScale
+                            alpha = checkScale.coerceIn(0f, 1f)
+                        }
+                )
+            }
+        }
     }
 }
 
