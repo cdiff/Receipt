@@ -77,24 +77,8 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 탑바 — 상단 알림 Bell 아이콘
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = {},
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Lucide.Bell,
-                        contentDescription = "Notifications",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+            // 공통 탑바
+            com.pasic.receipt.ui.components.MainCommonTopBar()
 
             Spacer(modifier = Modifier.height(8.dp))
 
