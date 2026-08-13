@@ -49,6 +49,7 @@ fun HomeScreen(
     onScanClick: () -> Unit = {},
     onScrollProgressChanged: (Float) -> Unit = {},
     onNavigateToReceiptList: () -> Unit = {},
+    onNavigateToReceiptDetail: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -117,7 +118,8 @@ fun HomeScreen(
             RecentReceiptsList(
                 receipts = uiState.recentReceipts,
                 onSeeAllClick = onNavigateToReceiptList,
-                onScanClick = onScanClick
+                onScanClick = onScanClick,
+                onReceiptClick = { receipt -> onNavigateToReceiptDetail(receipt.id) }
             )
 
             // 하단 네비게이션 바 여백

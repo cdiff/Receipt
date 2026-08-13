@@ -3,6 +3,7 @@ package com.pasic.receipt.ui.receipts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.local.entity.extractLocalDate
 import com.pasic.receipt.data.repository.ReceiptRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +67,7 @@ class ReceiptListViewModel @Inject constructor(
         val availableCats = (defaultCats + dbCats).distinct()
 
         val filtered = rawReceipts.filter { receipt ->
-            val receiptDate = extractLocalDate(receipt)
+            val receiptDate = receipt.extractLocalDate()
             // 1. 날짜 범위 필터 (dateRange 가 설정된 경우)
             val matchesRange = if (dateRange != null) {
                 !receiptDate.isBefore(dateRange.first) && !receiptDate.isAfter(dateRange.second)
@@ -147,42 +148,9 @@ class ReceiptListViewModel @Inject constructor(
         _selectedYearMonth.value = YearMonth.from(start)
     }
 
-    private fun extractLocalDate(receipt: ReceiptEntity): LocalDate {
-        // 1. 영수증 결제 일시(또는 휠 피커 수정 일시 `receipt.date`)를 최우선 파싱
-        val dateStr = receipt.date
-        if (dateStr.isNotBlank()) {
-            val cleaned = dateStr.split("·").firstOrNull()?.trim() ?: dateStr
-            val yearMatch = Regex("""(\d{4})[.년\s]+(\d{1,2})[.월\s]+(\d{1,2})""").find(cleaned)
-            if (yearMatch != null) {
-                val year = yearMatch.groupValues[1].toInt()
-                val month = yearMatch.groupValues[2].toInt()
-                val day = yearMatch.groupValues[3].toInt()
-                return LocalDate.of(year, month, day)
-            }
-            val monthMatch = Regex("""(\d{1,2})월\s*(\d{1,2})일""").find(cleaned)
-            if (monthMatch != null) {
-                val month = monthMatch.groupValues[1].toInt()
-                val day = monthMatch.groupValues[2].toInt()
-                val year = if (receipt.createdAt > 1000000000000L) {
-                    java.time.Instant.ofEpochMilli(receipt.createdAt).atZone(java.time.ZoneId.systemDefault()).year
-                } else LocalDate.now().year
-                return LocalDate.of(year, month, day)
-            }
-        }
-
-        // 2. 결제 일시가 비어있거나 판독 불가 시 DB 저장 시각(`createdAt`) 보완
-        if (receipt.createdAt > 1000000000000L) {
-            runCatching {
-                return java.time.Instant.ofEpochMilli(receipt.createdAt)
-                    .atZone(java.time.ZoneId.systemDefault())
-                    .toLocalDate()
-            }
-        }
-        return LocalDate.now()
-    }
 
     private fun extractDailyGroupHeader(receipt: ReceiptEntity): String {
-        val parsed = extractLocalDate(receipt)
+        val parsed = receipt.extractLocalDate()
         val dayOfWeekStr = when (parsed.dayOfWeek) {
             java.time.DayOfWeek.MONDAY -> "월"
             java.time.DayOfWeek.TUESDAY -> "화"

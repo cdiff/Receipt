@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.local.entity.extractLocalDate
 import com.pasic.receipt.ui.theme.TextMuted
 import com.pasic.receipt.ui.theme.TextPrimary
 import com.pasic.receipt.ui.theme.TextSecondary
@@ -319,29 +320,6 @@ private fun ChartSegmentTab(
     }
 }
 
-private fun ReceiptEntity.extractLocalDate(): LocalDate {
-    if (createdAt > 1000000000000L) {
-        try {
-            return java.time.Instant.ofEpochMilli(createdAt)
-                .atZone(java.time.ZoneId.systemDefault())
-                .toLocalDate()
-        } catch (e: Exception) { }
-    }
-    return try {
-        val today = LocalDate.now()
-        val cleaned = date.split("·").firstOrNull()?.trim() ?: date
-        val monthMatch = Regex("(\\d{1,2})월\\s*(\\d{1,2})일").find(cleaned)
-        if (monthMatch != null) {
-            val month = monthMatch.groupValues[1].toInt()
-            val day = monthMatch.groupValues[2].toInt()
-            LocalDate.of(today.year, month, day)
-        } else {
-            today
-        }
-    } catch (e: Exception) {
-        LocalDate.now()
-    }
-}
 
 /**
  * 영수증 데이터 기반 차트 데이터 동적 집계 계산

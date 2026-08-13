@@ -27,3 +27,34 @@ data class ReceiptEntity(
     val deletedAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
+
+fun ReceiptEntity.extractLocalDate(): java.time.LocalDate {
+    if (date.isNotBlank()) {
+        val cleaned = date.split("·").firstOrNull()?.trim() ?: date
+        val yearMatch = Regex("""(\d{4})[-.년\s/]+(\d{1,2})[-.월\s/]+(\d{1,2})""").find(cleaned)
+        if (yearMatch != null) {
+            val year = yearMatch.groupValues[1].toInt()
+            val month = yearMatch.groupValues[2].toInt()
+            val day = yearMatch.groupValues[3].toInt()
+            return java.time.LocalDate.of(year, month, day)
+        }
+        val monthMatch = Regex("""(\d{1,2})[-.월\s/]+(\d{1,2})[일\s]*""").find(cleaned)
+        if (monthMatch != null) {
+            val month = monthMatch.groupValues[1].toInt()
+            val day = monthMatch.groupValues[2].toInt()
+            val year = if (createdAt > 1000000000000L) {
+                java.time.Instant.ofEpochMilli(createdAt).atZone(java.time.ZoneId.systemDefault()).year
+            } else java.time.LocalDate.now().year
+            return java.time.LocalDate.of(year, month, day)
+        }
+    }
+
+    if (createdAt > 1000000000000L) {
+        runCatching {
+            return java.time.Instant.ofEpochMilli(createdAt)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+        }
+    }
+    return java.time.LocalDate.now()
+}

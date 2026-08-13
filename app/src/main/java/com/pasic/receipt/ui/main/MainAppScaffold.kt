@@ -100,6 +100,9 @@ fun MainAppScaffold(
                                     kotlinx.coroutines.delay(300)
                                     isTransitioning = false
                                 }
+                            },
+                            onNavigateToReceiptDetail = { id ->
+                                navController.navigate("receipt_detail/$id")
                             }
                         )
                     }
