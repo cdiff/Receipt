@@ -78,7 +78,7 @@ fun DateRangePickerBottomSheet(
         dragHandle = {
             Box(
                 modifier = Modifier
-                    .padding(top = 10.dp, bottom = 4.dp)
+                    .padding(top = 10.dp, bottom = 16.dp)
                     .width(36.dp)
                     .height(4.dp)
                     .clip(CircleShape)
@@ -91,7 +91,8 @@ fun DateRangePickerBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize(animationSpec = tween(durationMillis = 200))
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 1. 월 이동 헤더 (< 2026년 10월 >)
