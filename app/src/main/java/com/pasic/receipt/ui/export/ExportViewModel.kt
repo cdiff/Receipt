@@ -8,6 +8,8 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.preferences.ALL_CSV_COLUMNS
+import com.pasic.receipt.data.preferences.UserPreferences
 import com.pasic.receipt.data.preferences.UserPreferencesRepository
 import com.pasic.receipt.data.repository.ReceiptRepository
 import com.pasic.receipt.util.PdfReportGenerator
@@ -25,6 +27,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.inject.Inject
@@ -37,7 +40,8 @@ data class ExportUiState(
     val customStartMs: Long? = null,
     val customEndMs: Long? = null,
     val formattedDateRangeText: String = "",
-    val csvHeaderColumns: List<String> = listOf("날짜", "상호명", "금액", "카테고리", "결제수단", "사업자번호", "부가세", "증빙유형", "메모"),
+    val csvHeaderColumns: List<String> = ALL_CSV_COLUMNS,
+    val userPreferences: UserPreferences = UserPreferences(),
     val selectedFormat: ExportFormat = ExportFormat.EXCEL,
     val defaultAuthor: String = "",
     val defaultDepartment: String = "",
@@ -77,14 +81,15 @@ class ExportViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.userPreferencesFlow.collect { prefs ->
                 val format = if (prefs.defaultExportFormat == "PDF") ExportFormat.PDF else ExportFormat.EXCEL
-                val columns = prefs.csvSelectedColumns.toList()
+                val columns = ALL_CSV_COLUMNS.filter { prefs.csvSelectedColumns.contains(it) }
                 _uiState.update { state ->
                     state.copy(
                         defaultAuthor = prefs.defaultAuthor,
                         defaultDepartment = prefs.defaultDepartment,
                         defaultPurpose = prefs.defaultPurpose,
                         selectedFormat = if (!hasInitializedDefaults) format else state.selectedFormat,
-                        csvHeaderColumns = if (!hasInitializedDefaults && columns.isNotEmpty()) columns else state.csvHeaderColumns
+                        csvHeaderColumns = if (columns.isNotEmpty()) columns else ALL_CSV_COLUMNS,
+                        userPreferences = prefs
                     )
                 }
                 hasInitializedDefaults = true
@@ -512,25 +517,83 @@ class ExportViewModel @Inject constructor(
     }
 
     private fun buildCsvString(receipts: List<ReceiptEntity>, includeImageColumn: Boolean = false): String {
+        val prefs = _uiState.value.userPreferences
+        val selectedCols = ALL_CSV_COLUMNS.filter { prefs.csvSelectedColumns.contains(it) }
+        val columnsToUse = if (selectedCols.isNotEmpty()) selectedCols else ALL_CSV_COLUMNS
+
         return buildString {
-            append('\uFEFF') // BOM: 한글 깨짐 방지
-            val headers = uiState.value.csvHeaderColumns.toMutableList()
+            append('\uFEFF') // BOM: 엑셀 한글 깨짐 방지
+            val headers = columnsToUse.toMutableList()
             if (includeImageColumn) headers.add("영수증 이미지 파일명")
             appendLine(headers.joinToString(","))
 
             receipts.forEachIndexed { index, r ->
-                val memo = r.memo?.replace(",", " ") ?: ""
-                val baseRow = "${r.date},\"${r.merchantName}\",${r.totalAmount.toLong()},${r.category},${r.paymentMethod},${r.businessNumber ?: ""},${r.vatAmount?.toLong() ?: ""},${r.proofType},\"$memo\""
+                val rowValues = columnsToUse.map { col ->
+                    val raw = getColumnValue(r, col, prefs)
+                    if (raw.contains(",") || raw.contains("\"") || raw.contains("\n")) {
+                        "\"" + raw.replace("\"", "\"\"") + "\""
+                    } else {
+                        raw
+                    }
+                }.toMutableList()
+
                 if (includeImageColumn) {
                     val imgFileName = if (r.imagePath.isNotBlank()) {
                         val ext = File(r.imagePath).extension.ifBlank { "jpg" }
-                        "images/receipt_${index + 1}_${r.date.replace(".", "")}.$ext"
+                        val cleanDate = r.date.replace("-", "").replace(".", "").replace("/", "").replace(" ", "")
+                        "images/receipt_${index + 1}_${cleanDate}.$ext"
                     } else ""
-                    appendLine("$baseRow,\"$imgFileName\"")
-                } else {
-                    appendLine(baseRow)
+                    rowValues.add("\"$imgFileName\"")
                 }
+
+                appendLine(rowValues.joinToString(","))
             }
+        }
+    }
+
+    private fun getColumnValue(r: ReceiptEntity, colName: String, prefs: UserPreferences): String {
+        return when (colName) {
+            "결제일시" -> formatCsvDate(r.date, prefs.csvDateFormat)
+            "가맹점명" -> r.merchantName
+            "결제금액" -> formatCsvAmount(r.totalAmount, prefs.csvAmountFormat)
+            "공급가액" -> {
+                val vat = r.vatAmount ?: 0.0
+                formatCsvAmount(r.totalAmount - vat, prefs.csvAmountFormat)
+            }
+            "부가세" -> formatCsvAmount(r.vatAmount ?: 0.0, prefs.csvAmountFormat)
+            "카테고리" -> r.category
+            "결제수단" -> r.paymentMethod
+            "사업자번호" -> r.businessNumber ?: ""
+            "승인번호" -> ""
+            "통화" -> r.currency.ifBlank { "KRW" }
+            "메모" -> r.memo ?: ""
+            else -> ""
+        }
+    }
+
+    private fun formatCsvDate(dateStr: String, formatPattern: String): String {
+        val digits = dateStr.replace(Regex("[^0-9]"), "")
+        if (digits.length >= 8) {
+            val yyyy = digits.substring(0, 4)
+            val mm = digits.substring(4, 6)
+            val dd = digits.substring(6, 8)
+            val yy = yyyy.takeLast(2)
+            return when (formatPattern) {
+                "YYYY. MM. DD" -> "$yyyy. $mm. $dd"
+                "YY/MM/DD" -> "$yy/$mm/$dd"
+                "YYYY년 MM월 DD일" -> "${yyyy}년 ${mm}월 ${dd}일"
+                else -> "$yyyy-$mm-$dd"
+            }
+        }
+        return dateStr
+    }
+
+    private fun formatCsvAmount(amount: Double, formatType: String): String {
+        val longVal = amount.toLong()
+        return when (formatType) {
+            "RAW_NUMBER" -> longVal.toString()
+            "CURRENCY_TEXT" -> String.format(Locale.KOREA, "%,d원", longVal)
+            else -> String.format(Locale.KOREA, "%,d", longVal)
         }
     }
 }
