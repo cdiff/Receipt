@@ -20,7 +20,7 @@ enum class AppThemeOption(val label: String) {
     DARK("다크 모드")
 }
 
-val ALL_CSV_COLUMNS = listOf("거래 일시", "가맹점명", "총 금액", "공급가액", "부가세", "카테고리", "결제 수단", "사업자 번호", "승인 번호", "메모", "이미지 파일명")
+val ALL_CSV_COLUMNS = listOf("결제일시", "가맹점명", "결제금액", "공급가액", "부가세", "카테고리", "결제수단", "사업자번호", "승인번호", "통화", "메모")
 
 data class UserPreferences(
     val defaultAuthor: String = "홍길동",
@@ -32,7 +32,7 @@ data class UserPreferences(
     val csvAmountFormat: String = "CURRENCY_TEXT", // "RAW_NUMBER", "CURRENCY_TEXT"
     val zipImageNamingRule: String = "{date}_{merchant}_{index}",
     val autoOptimizeEnabled: Boolean = true,
-    val autoCropEnabled: Boolean = true,
+    val autoCropEnabled: Boolean = false,
     val bwEnhancementEnabled: Boolean = false,
     val aiCategoryEnabled: Boolean = true,
     val appTheme: AppThemeOption = AppThemeOption.SYSTEM
@@ -87,7 +87,7 @@ class UserPreferencesRepository @Inject constructor(
                 csvAmountFormat = preferences[PreferencesKeys.CSV_AMOUNT_FORMAT] ?: "CURRENCY_TEXT",
                 zipImageNamingRule = preferences[PreferencesKeys.ZIP_IMAGE_NAMING_RULE] ?: "{date}_{merchant}_{index}",
                 autoOptimizeEnabled = preferences[PreferencesKeys.AUTO_OPTIMIZE] ?: true,
-                autoCropEnabled = preferences[PreferencesKeys.AUTO_CROP] ?: true,
+                autoCropEnabled = preferences[PreferencesKeys.AUTO_CROP] ?: false,
                 bwEnhancementEnabled = preferences[PreferencesKeys.BW_ENHANCEMENT] ?: false,
                 aiCategoryEnabled = preferences[PreferencesKeys.AI_CATEGORY] ?: true,
                 appTheme = themeOption
