@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.preferences.ALL_CSV_COLUMNS
 import com.pasic.receipt.data.preferences.AppThemeOption
 import com.pasic.receipt.data.preferences.UserPreferences
 import com.pasic.receipt.data.preferences.UserPreferencesRepository
@@ -118,7 +119,7 @@ class SettingsViewModel @Inject constructor(
 
     fun toggleCsvColumn(columnName: String) {
         viewModelScope.launch {
-            val current = userPreferences.value.csvSelectedColumns.toMutableSet()
+            val current = userPreferences.value.csvSelectedColumns.filter { ALL_CSV_COLUMNS.contains(it) }.toMutableSet()
             if (current.contains(columnName)) {
                 if (current.size > 1) current.remove(columnName)
             } else {
@@ -193,6 +194,7 @@ class SettingsViewModel @Inject constructor(
                         put("proofType", r.proofType)
                         put("memo", r.memo ?: "")
                         put("imagePath", r.imagePath)
+                        put("createdAt", r.createdAt)
                     }
                     jsonArray.put(obj)
                 }
@@ -279,11 +281,22 @@ class SettingsViewModel @Inject constructor(
 
                 val jsonArray = rootObj.getJSONArray("receipts")
                 val imagesDir = File(context.filesDir, "receipt_images").apply { mkdirs() }
+                val existingReceipts = receiptRepository.getAllReceipts().first()
 
                 for (i in 0 until jsonArray.length()) {
                     val obj = jsonArray.getJSONObject(i)
-                    val oldPath = obj.optString("imagePath", "")
+                    val merchant = obj.optString("merchantName", "알 수 없는 상호")
+                    val amount = obj.optDouble("totalAmount", 0.0)
+                    val date = obj.optString("date", "")
+                    val createdAt = obj.optLong("createdAt", System.currentTimeMillis())
 
+                    // 이미 DB에 동일한 영수증(상호명 + 금액 + 날짜)이 존재하면 중복 생성 방지
+                    val isDuplicate = existingReceipts.any {
+                        it.merchantName == merchant && it.totalAmount == amount && it.date == date
+                    }
+                    if (isDuplicate) continue
+
+                    val oldPath = obj.optString("imagePath", "")
                     var newImagePath: String? = null
                     if (oldPath.isNotBlank()) {
                         val matchingEntry = restoredImages.entries.find { it.key.contains("receipt_${obj.optLong("id")}_") }
@@ -298,16 +311,17 @@ class SettingsViewModel @Inject constructor(
                     }
 
                     val entity = ReceiptEntity(
-                        merchantName = obj.getString("merchantName"),
-                        totalAmount = obj.getDouble("totalAmount"),
-                        date = obj.getString("date"),
+                        merchantName = merchant,
+                        totalAmount = amount,
+                        date = date,
                         category = obj.optString("category", "식비"),
                         paymentMethod = obj.optString("paymentMethod", "카드"),
                         businessNumber = obj.optString("businessNumber").ifEmpty { null },
                         vatAmount = if (obj.has("vatAmount")) obj.getDouble("vatAmount") else null,
                         proofType = obj.optString("proofType", "일반영수증"),
                         memo = obj.optString("memo").ifEmpty { null },
-                        imagePath = newImagePath ?: oldPath
+                        imagePath = newImagePath ?: oldPath,
+                        createdAt = createdAt
                     )
                     receiptRepository.insertReceipt(entity)
                 }
