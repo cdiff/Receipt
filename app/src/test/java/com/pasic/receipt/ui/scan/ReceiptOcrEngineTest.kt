@@ -82,7 +82,7 @@ class ReceiptOcrEngineTest {
         val result = parseMethod.invoke(ReceiptOcrEngine, invalidJson, "/test/path.jpg") as OcrResult
 
         assertNotNull(result)
-        assertEquals(85, result.confidenceScore)
+        assertEquals(30, result.confidenceScore)
         assertEquals("미분류", result.category)
     }
 }

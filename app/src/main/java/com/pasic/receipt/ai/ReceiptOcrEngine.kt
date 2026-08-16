@@ -123,17 +123,30 @@ object ReceiptOcrEngine {
         if (jsonText.isBlank()) return generateUnrecognizedOcrResult(imagePath)
 
         return try {
-            val merchantName = extractJsonValue(jsonText, "merchantName")
-            var dateStr = extractJsonValue(jsonText, "date")
-            val totalAmount = extractJsonValue(jsonText, "totalAmount").toDoubleOrNull() ?: 0.0
-            val businessNumber = extractJsonValue(jsonText, "businessNumber")
-            val category = extractJsonValue(jsonText, "category").ifBlank { "식비" }
-            val suggestedNewCategory = extractJsonValue(jsonText, "suggestedNewCategory").replace("#", "")
-            val confidence = extractJsonValue(jsonText, "confidence").toIntOrNull()?.coerceIn(30, 100) ?: 85
+            val cleanJson = jsonText
+                .replace("```json", "")
+                .replace("```", "")
+                .trim()
 
-            var paymentMethod = extractJsonValue(jsonText, "paymentMethod").ifBlank { "신용카드" }
-            var proofType = extractJsonValue(jsonText, "proofType").ifBlank { "일반영수증" }
-            val extractedVat = extractJsonValue(jsonText, "vatAmount").toDoubleOrNull()
+            val startIdx = cleanJson.indexOf('{')
+            val endIdx = cleanJson.lastIndexOf('}')
+            if (startIdx == -1 || endIdx == -1 || endIdx < startIdx) {
+                return generateUnrecognizedOcrResult(imagePath)
+            }
+            val jsonPayload = cleanJson.substring(startIdx, endIdx + 1)
+
+            val merchantName = extractJsonField(jsonPayload, "merchantName")
+            val dateStr = extractJsonField(jsonPayload, "date")
+            val totalAmount = extractJsonField(jsonPayload, "totalAmount").toDoubleOrNull() ?: 0.0
+            val businessNumber = extractJsonField(jsonPayload, "businessNumber")
+            val category = extractJsonField(jsonPayload, "category").ifBlank { "식비" }
+            val suggestedNewCategory = extractJsonField(jsonPayload, "suggestedNewCategory").replace("#", "").trim()
+            val confidence = extractJsonField(jsonPayload, "confidence").toIntOrNull()?.coerceIn(30, 100) ?: 85
+
+            val paymentMethod = extractJsonField(jsonPayload, "paymentMethod").ifBlank { "신용카드" }
+            val proofType = extractJsonField(jsonPayload, "proofType").ifBlank { "일반영수증" }
+            val extractedVat = extractJsonField(jsonPayload, "vatAmount").toDoubleOrNull()
+
             val vatAmount = if (extractedVat != null && extractedVat > 0.0) {
                 extractedVat
             } else if (totalAmount > 0.0) {
@@ -165,35 +178,19 @@ object ReceiptOcrEngine {
         }
     }
 
-    private fun extractJsonValue(json: String, key: String): String {
-        // String value matching "key": "value"
-        val stringMatch = Regex("\"$key\"\\s*:\\s*\"([^\"]*)\"").find(json)
+    private fun extractJsonField(json: String, key: String): String {
+        val stringMatch = Regex("""["']$key["']\s*:\s*["']([^"']*)["']""").find(json)
         if (stringMatch != null) {
             return stringMatch.groupValues[1].trim()
         }
-        // Numeric/Primitive value matching "key": 123.45
-        val numberMatch = Regex("\"$key\"\\s*:\\s*([0-9.]+)").find(json)
-        if (numberMatch != null) {
-            return numberMatch.groupValues[1].trim()
+        val primitiveMatch = Regex("""["']$key["']\s*:\s*([0-9.]+)""").find(json)
+        if (primitiveMatch != null) {
+            return primitiveMatch.groupValues[1].trim()
         }
         return ""
     }
 
-    private fun safeLogD(tag: String, msg: String) {
-        try {
-            Log.d(tag, msg)
-        } catch (t: Throwable) {
-            println("[$tag] $msg")
-        }
-    }
 
-    private fun safeLogI(tag: String, msg: String) {
-        try {
-            Log.i(tag, msg)
-        } catch (t: Throwable) {
-            println("[$tag] $msg")
-        }
-    }
 
     private fun safeLogE(tag: String, msg: String, tr: Throwable? = null) {
         try {

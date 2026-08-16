@@ -32,7 +32,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `DB가 비어있을 때 기본 시연용 데모 영수증 2건을 제공한다`() = runTest {
+    fun `DB가 비어있을 때 빈 영수증 목록 및 기본값을 제공한다`() = runTest {
         val emptyFlow = flowOf<List<ReceiptEntity>>(emptyList())
         Mockito.doReturn(emptyFlow).`when`(repository).getAllReceipts()
 
@@ -40,9 +40,10 @@ class HomeViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals(5, state.recentReceipts.size)
-        assertEquals("스타벅스 강남대로점", state.recentReceipts[0].merchantName)
-        assertEquals("CU 역삼하이츠점", state.recentReceipts[1].merchantName)
+        assertEquals(0, state.recentReceipts.size)
+        assertEquals(0, state.todayCount)
+        assertEquals("0원", state.todayAmountFormatted)
+        assertEquals("0원", state.totalSpendingFormatted)
     }
 
     @Test

@@ -117,38 +117,12 @@ fun ReceiptScanFailureDialog(
                             .height(180.dp)
                             .fillMaxWidth(0.85f)
                     ) {
-                        val failImageResId = remember {
-                            try {
-                                R.drawable::class.java.getField("ic_receipt_fail").getInt(null)
-                            } catch (e: Exception) {
-                                0
-                            }
-                        }
-
-                        if (failImageResId != 0) {
-                            Image(
-                                painter = painterResource(id = failImageResId),
-                                contentDescription = "영수증 인식 실패 일러스트",
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            // PNG 이미지 미존재 시 경고 아이콘 폴백 표시
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFFEF2F2))
-                            ) {
-                                Icon(
-                                    imageVector = Lucide.Info,
-                                    contentDescription = "인식 실패 경고",
-                                    tint = Color(0xFFEF4444),
-                                    modifier = Modifier.size(54.dp)
-                                )
-                            }
-                        }
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_receipt_fail),
+                            contentDescription = "영수증 인식 실패 일러스트",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
