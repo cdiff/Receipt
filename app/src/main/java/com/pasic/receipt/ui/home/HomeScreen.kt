@@ -1,38 +1,28 @@
 package com.pasic.receipt.ui.home
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.composables.icons.lucide.Bell
-import com.composables.icons.lucide.Lucide
 import com.pasic.receipt.ui.home.components.CategorySpendingBreakdown
 import com.pasic.receipt.ui.home.components.HomeMainHeroBannerCard
 import com.pasic.receipt.ui.home.components.QuickActionGrid
 import com.pasic.receipt.ui.home.components.RecentReceiptsList
 import com.pasic.receipt.ui.home.components.SpendingUsageChart
 import com.pasic.receipt.ui.theme.ScreenBackground
-import com.pasic.receipt.ui.theme.TextPrimary
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlin.math.min
@@ -78,8 +68,8 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 공통 탑바
-            com.pasic.receipt.ui.components.MainCommonTopBar()
+            // 공통 탑바 (홈 화면에 영수증 쏙 로고 표시)
+            com.pasic.receipt.ui.components.MainCommonTopBar(showLogo = true)
 
             Spacer(modifier = Modifier.height(8.dp))
 

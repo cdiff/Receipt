@@ -9,6 +9,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+import androidx.compose.material3.darkColorScheme
+
 private val LightColorScheme = lightColorScheme(
     primary = FabNavy,
     secondary = ModernCardBlue,
@@ -22,10 +24,10 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun ReceiptTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
+
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window

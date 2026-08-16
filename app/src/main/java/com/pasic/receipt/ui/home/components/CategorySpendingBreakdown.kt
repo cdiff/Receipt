@@ -120,7 +120,7 @@ private fun CategorySpendingCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
+            .background(com.pasic.receipt.ui.theme.CardBackground)
             .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(18.dp))
             .padding(18.dp)
     ) {

@@ -66,7 +66,7 @@ fun MainAppScaffold(
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color.White
+            color = com.pasic.receipt.ui.theme.ScreenBackground
         ) {
             // safeDrawingPadding: 상태바·카메라 노치·하단 제스처 영역 인셋 처리 (화이트 마스킹)
             Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -129,8 +129,6 @@ fun MainAppScaffold(
                                     isTransitioning = false
                                 }
                             },
-                            onNavigateToExport = {},
-                            onNavigateToSettings = {},
                             onNavigateToDetail = { id ->
                                 navController.navigate("receipt_detail/$id")
                             }

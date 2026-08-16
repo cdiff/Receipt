@@ -98,7 +98,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(com.pasic.receipt.ui.theme.ScreenBackground)
     ) {
         Column(
             modifier = Modifier

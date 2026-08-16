@@ -75,8 +75,6 @@ fun ReceiptListScreen(
     onScrollProgressChanged: (Float) -> Unit = {},
     onNavigateToHome: () -> Unit = {},
     onNavigateToScan: () -> Unit = {},
-    onNavigateToExport: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {},
     onNavigateToDetail: (Long) -> Unit = {},
     viewModel: ReceiptListViewModel = hiltViewModel()
 ) {
@@ -113,7 +111,7 @@ fun ReceiptListScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.White
+        color = com.pasic.receipt.ui.theme.ScreenBackground
     ) {
         Column(
             modifier = Modifier

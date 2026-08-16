@@ -215,7 +215,7 @@ private fun ReceiptItemCard(
         modifier = Modifier
             .width(180.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
+            .background(com.pasic.receipt.ui.theme.CardBackground)
             .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(16.dp)

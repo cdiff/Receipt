@@ -1,3 +1,77 @@
 <resources>
-    <string name="app_name">Receipt</string>
+    <!-- App Base -->
+    <string name="app_name">영수증 쏙</string>
+
+    <!-- Common Actions -->
+    <string name="common_confirm">확인</string>
+    <string name="common_cancel">취소</string>
+    <string name="common_save">저장</string>
+    <string name="common_delete">삭제</string>
+    <string name="common_edit">수정</string>
+    <string name="common_close">닫기</string>
+    <string name="common_retry">다시 시도</string>
+    <string name="common_see_all">전체보기</string>
+    <string name="common_loading">처리 중...</string>
+    <string name="common_currency_won">원</string>
+
+    <!-- Navigation Tabs -->
+    <string name="tab_home">홈</string>
+    <string name="tab_receipts">영수증</string>
+    <string name="tab_scan">스캔</string>
+    <string name="tab_export">내보내기</string>
+    <string name="tab_settings">설정</string>
+
+    <!-- Home Screen -->
+    <string name="home_today_spending">오늘의 지출</string>
+    <string name="home_today_receipt_count">%1$d건의 영수증</string>
+    <string name="home_no_receipts_today">오늘 등록된 영수증이 없습니다</string>
+    <string name="home_quick_scan">영수증 스캔</string>
+    <string name="home_quick_list">전체 내역</string>
+    <string name="home_quick_chart">지출 통계</string>
+    <string name="home_quick_export">보고서 추출</string>
+    <string name="home_category_breakdown">카테고리별 지출</string>
+    <string name="home_recent_receipts">최근 등록된 영수증</string>
+    <string name="home_spending_chart">소비 추이</string>
+
+    <!-- Receipts Screen -->
+    <string name="receipts_title">영수증 보관함</string>
+    <string name="receipts_search_hint">가맹점명 또는 메모 검색</string>
+    <string name="receipts_empty_title">등록된 영수증이 없습니다</string>
+    <string name="receipts_empty_desc">새로운 영수증을 카메라로 스캔하여 스마트하게 관리해보세요.</string>
+    <string name="receipt_detail_title">영수증 상세 정보</string>
+    <string name="receipt_delete_confirm_title">영수증 삭제</string>
+    <string name="receipt_delete_confirm_desc">이 영수증을 정말 삭제하시겠습니까? 삭제된 내역은 휴지통으로 이동합니다.</string>
+
+    <!-- Camera & Scan -->
+    <string name="scan_title">영수증 촬영</string>
+    <string name="scan_guide_desc">영수증의 모서리가 가이드 영역 안에 들어오도록 맞춰주세요</string>
+    <string name="scan_gallery_button">갤러리</string>
+    <string name="scan_flash_toggle">플래시</string>
+    <string name="scan_analyzing">AI가 영수증 정보를 정밀 분석하고 있습니다...</string>
+    <string name="scan_failure_title">영수증 인식에 실패했습니다</string>
+    <string name="scan_failure_desc">깨끗한 배경에 영수증을 놓고\n전체가 잘 나오도록 다시 촬영해 주세요.</string>
+    <string name="scan_result_title">영수증 정보 확인</string>
+    <string name="scan_result_save">보관함에 저장</string>
+
+    <!-- Export Screen -->
+    <string name="export_title">지출 결의서 내보내기</string>
+    <string name="export_pdf_title">PDF 법인카드 지출결의서</string>
+    <string name="export_csv_title">Excel / CSV 데이터 추출</string>
+    <string name="export_zip_title">영수증 원본 이미지 ZIP 압축</string>
+    <string name="export_preview">미리보기</string>
+    <string name="export_generate">파일 생성</string>
+    <string name="export_period_select">기간 선택</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">설정</string>
+    <string name="settings_general_section">기본 사용자 정보</string>
+    <string name="settings_author_label">기본 작성자명</string>
+    <string name="settings_dept_label">기본 결의부서</string>
+    <string name="settings_purpose_label">기본 지출목적</string>
+    <string name="settings_ai_camera_section">AI 스마트 스캔 설정</string>
+    <string name="settings_auto_optimize">영수증 자동 보정 및 수평 정렬</string>
+    <string name="settings_ai_category">AI 가맹점 자동 카테고리 분류</string>
+    <string name="settings_theme_section">화면 테마 설정</string>
+    <string name="settings_theme_title">테마 모드</string>
+    <string name="settings_backup_section">데이터 백업 및 복원</string>
 </resources>
