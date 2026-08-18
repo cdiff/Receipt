@@ -55,14 +55,13 @@ import com.composables.icons.lucide.X
 import com.pasic.receipt.ui.theme.ModernCardBlue
 import com.pasic.receipt.ui.theme.TextPrimary
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.delay
 
 /**
  * 홈 화면 [더보기] 클릭 시 위로 펼쳐지는 모던 스피드 다이얼(Speed Dial) 메뉴.
- * - Haze 마일드 글래스 블러 (10dp) + 소프트 아이스 블루 틴트 (#E0EDFE 30%)
+ * - Haze 공식 프리셋 HazeMaterials.ultraThin() + 소프트 아이스 블루 틴트 (#E0EDFE 30%)
  * - 4개 메뉴 + 닫기 버튼 모두 평상시 화이트 톤 ➔ 터치 누르는 순간(Pressed) 사진처럼 로얄 블루 반전
  * - 각 아이템별 Animatable 기반의 완벽한 순차 스프링 팝 (아래 -> 위) & 닫기 회전 모션
  */
@@ -135,14 +134,12 @@ fun HomeSpeedDialMenu(
         modifier = modifier.fillMaxSize()
     ) {
         val hazeModifier = if (hazeState != null) {
-            Modifier.hazeEffect(
-                state = hazeState,
-                style = HazeStyle(
-                    tints = listOf(HazeTint(Color(0xFFE0EDFE).copy(alpha = 0.30f))),
-                    blurRadius = 15.dp,
-                    noiseFactor = 0f
+            Modifier
+                .hazeEffect(
+                    state = hazeState,
+                    style = HazeMaterials.ultraThin()
                 )
-            )
+                .background(Color(0xFFE0EDFE).copy(alpha = 0.30f))
         } else {
             Modifier.background(Color(0xFFE0EDFE).copy(alpha = 0.50f))
         }
