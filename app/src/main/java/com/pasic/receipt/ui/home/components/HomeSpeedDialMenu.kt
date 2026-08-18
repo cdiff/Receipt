@@ -50,6 +50,7 @@ import com.composables.icons.lucide.Archive
 import com.composables.icons.lucide.FileSpreadsheet
 import com.composables.icons.lucide.Headset
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.MessageCircle
 import com.composables.icons.lucide.PenLine
 import com.composables.icons.lucide.X
 import com.pasic.receipt.ui.theme.ModernCardBlue
@@ -163,12 +164,12 @@ fun HomeSpeedDialMenu(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // 1번 (맨 위): 고객센터 (itemIndex = 0)
+                // 1번 (맨 위): 카카오톡 문의 (itemIndex = 0)
                 StaggeredSpeedDialRow(
                     visible = visible,
                     itemIndex = 0,
-                    title = "고객센터",
-                    icon = Lucide.Headset,
+                    title = "카카오톡 문의",
+                    icon = Lucide.MessageCircle,
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         onCustomerCenterClick()

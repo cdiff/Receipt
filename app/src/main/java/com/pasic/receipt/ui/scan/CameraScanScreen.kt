@@ -244,6 +244,16 @@ fun CameraScanScreen(
                     onContactSupport = {
                         viewModel.resetScanFailure()
                         onClose()
+                        try {
+                            val intent = android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://open.kakao.com/o/scpC0uJi")
+                            )
+                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            com.pasic.receipt.util.ToastEventBus.showToast("오픈채팅 링크를 열 수 없습니다.")
+                        }
                     },
                     onDismiss = { viewModel.resetScanFailure() }
                 )

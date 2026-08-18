@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -112,8 +113,12 @@ fun MainAppScaffold(
         label = "globalNavScrollProgress"
     )
 
+    // 알림 뷰모델 및 읽지 않은 알림 개수 구독
+    val notificationViewModel: com.pasic.receipt.ui.notification.NotificationViewModel = hiltViewModel()
+    val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState()
+
     // 하단 탭바 표시 여부
-    val hasBottomBar = currentRoute !in listOf("scan", "scan_result") && !currentRoute.startsWith("receipt_detail")
+    val hasBottomBar = currentRoute !in listOf("scan", "scan_result", "notifications") && !currentRoute.startsWith("receipt_detail")
 
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -162,6 +167,16 @@ fun MainAppScaffold(
                             },
                             onMoreClick = {
                                 showSpeedDial = true
+                            },
+                            unreadNotificationCount = unreadNotificationCount,
+                            onNotificationClick = {
+                                isTransitioning = true
+                                rawScrollProgress = 0f
+                                navController.navigate("notifications")
+                                coroutineScope.launch {
+                                    delay(300)
+                                    isTransitioning = false
+                                }
                             }
                         )
                     }
@@ -269,7 +284,17 @@ fun MainAppScaffold(
                     composable("export") {
                         ExportScreen(
                             hazeState = hazeState,
-                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it }
+                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it },
+                            unreadNotificationCount = unreadNotificationCount,
+                            onNotificationClick = {
+                                isTransitioning = true
+                                rawScrollProgress = 0f
+                                navController.navigate("notifications")
+                                coroutineScope.launch {
+                                    delay(300)
+                                    isTransitioning = false
+                                }
+                            }
                         )
                     }
 
@@ -277,7 +302,36 @@ fun MainAppScaffold(
                     composable("settings") {
                         com.pasic.receipt.ui.settings.SettingsScreen(
                             hazeState = hazeState,
-                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it }
+                            onScrollProgressChanged = { if (!isTransitioning) rawScrollProgress = it },
+                            unreadNotificationCount = unreadNotificationCount,
+                            onNotificationClick = {
+                                isTransitioning = true
+                                rawScrollProgress = 0f
+                                navController.navigate("notifications")
+                                coroutineScope.launch {
+                                    delay(300)
+                                    isTransitioning = false
+                                }
+                            }
+                        )
+                    }
+
+                    // 7. 알림 센터 화면 (영수증 상세와 동일한 수평 슬라이드 트랜지션)
+                    composable(
+                        route = "notifications",
+                        enterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
+                        exitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popEnterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popExitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } }
+                    ) {
+                        com.pasic.receipt.ui.notification.NotificationScreen(
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToRoute = { route ->
+                                navController.navigate(route)
+                            },
+                            viewModel = notificationViewModel
                         )
                     }
                 } // NavHost
@@ -334,11 +388,24 @@ fun MainAppScaffold(
             hazeState = hazeState,
             onCustomerCenterClick = {
                 showSpeedDial = false
-                com.pasic.receipt.util.ToastEventBus.showToast("고객센터 준비 중입니다.")
+                try {
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://open.kakao.com/o/scpC0uJi")
+                    )
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    com.pasic.receipt.util.ToastEventBus.showToast("오픈채팅 링크를 열 수 없습니다.")
+                }
             },
             onMonthlyReportClick = {
                 showSpeedDial = false
-                com.pasic.receipt.util.ToastEventBus.showToast("이번달 지출 보고서 준비 중입니다.")
+                navController.navigate("export") {
+                    popUpTo("home") { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
             },
             onManualInputClick = {
                 showSpeedDial = false
@@ -346,7 +413,11 @@ fun MainAppScaffold(
             },
             onZipBackupClick = {
                 showSpeedDial = false
-                com.pasic.receipt.util.ToastEventBus.showToast("ZIP 파일 안전 보관 준비 중입니다.")
+                navController.navigate("export") {
+                    popUpTo("home") { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
             }
         )
 
