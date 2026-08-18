@@ -94,6 +94,8 @@ private const val SCROLL_THRESHOLD_PX = 80f
 fun ExportScreen(
     hazeState: HazeState = remember { HazeState() },
     onScrollProgressChanged: (Float) -> Unit = {},
+    unreadNotificationCount: Int = 0,
+    onNotificationClick: () -> Unit = {},
     viewModel: ExportViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -127,8 +129,11 @@ fun ExportScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 공통 탑바
-            com.pasic.receipt.ui.components.MainCommonTopBar()
+            // 공통 탑바 (알림 뱃지 및 클릭 연동)
+            com.pasic.receipt.ui.components.MainCommonTopBar(
+                unreadCount = unreadNotificationCount,
+                onNotificationClick = onNotificationClick
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 

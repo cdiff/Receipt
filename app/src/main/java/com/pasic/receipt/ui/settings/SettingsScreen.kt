@@ -59,6 +59,8 @@ private const val SCROLL_THRESHOLD_PX = 80f
 fun SettingsScreen(
     hazeState: HazeState = remember { HazeState() },
     onScrollProgressChanged: (Float) -> Unit = {},
+    unreadNotificationCount: Int = 0,
+    onNotificationClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val userPrefs by viewModel.userPreferences.collectAsState()
@@ -106,7 +108,10 @@ fun SettingsScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                MainCommonTopBar()
+                MainCommonTopBar(
+                    unreadCount = unreadNotificationCount,
+                    onNotificationClick = onNotificationClick
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
 

@@ -17,6 +17,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.res.painterResource
 import com.pasic.receipt.R
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import com.pasic.receipt.ui.theme.ModernCardBlue
 import com.pasic.receipt.ui.theme.TextPrimary
 
 /**
@@ -25,6 +31,7 @@ import com.pasic.receipt.ui.theme.TextPrimary
 @Composable
 fun MainCommonTopBar(
     showLogo: Boolean = false,
+    unreadCount: Int = 0,
     onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -43,16 +50,29 @@ fun MainCommonTopBar(
             )
         }
 
-        IconButton(
-            onClick = onNotificationClick,
-            modifier = Modifier.size(36.dp)
-        ) {
-            Icon(
-                imageVector = Lucide.Bell,
-                contentDescription = "알림",
-                tint = TextPrimary,
-                modifier = Modifier.size(20.dp)
-            )
+        Box(contentAlignment = Alignment.TopEnd) {
+            IconButton(
+                onClick = onNotificationClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Lucide.Bell,
+                    contentDescription = "알림",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // 읽지 않은 알림이 있을 경우 우측 상단에 싱그러운 초록색 점 뱃지 표시
+            if (unreadCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 3.dp, end = 6.dp)
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF10B981))
+                )
+            }
         }
     }
 }

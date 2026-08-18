@@ -52,6 +52,8 @@ fun HomeScreen(
     onNavigateToReceiptList: () -> Unit = {},
     onNavigateToReceiptDetail: (Long) -> Unit = {},
     onMoreClick: () -> Unit = {},
+    unreadNotificationCount: Int = 0,
+    onNotificationClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -83,8 +85,12 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 공통 탑바 (홈 화면에 영수증 쏙 로고 표시)
-            com.pasic.receipt.ui.components.MainCommonTopBar(showLogo = true)
+            // 공통 탑바 (홈 화면에 영수증 쏙 로고 표시 + 알림 뱃지 및 클릭 연동)
+            com.pasic.receipt.ui.components.MainCommonTopBar(
+                showLogo = true,
+                unreadCount = unreadNotificationCount,
+                onNotificationClick = onNotificationClick
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 

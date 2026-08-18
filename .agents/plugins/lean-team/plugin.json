@@ -1,0 +1,11 @@
+{
+  "name": "lean-team",
+  "version": "1.0.0",
+  "description": "실전형 린(Lean) 멀티 에이전트 개발팀 플러그인 (Planner, Builder, Verifier-Solver)",
+  "author": "Antigravity",
+  "agents": [
+    "planner",
+    "builder",
+    "verifier-solver"
+  ]
+}

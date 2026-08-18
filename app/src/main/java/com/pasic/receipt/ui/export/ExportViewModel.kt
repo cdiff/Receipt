@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.notification.NotificationRepository
 import com.pasic.receipt.data.preferences.ALL_CSV_COLUMNS
 import com.pasic.receipt.data.preferences.UserPreferences
 import com.pasic.receipt.data.preferences.UserPreferencesRepository
@@ -64,7 +65,8 @@ data class ExportUiState(
 @HiltViewModel
 class ExportViewModel @Inject constructor(
     private val repository: ReceiptRepository,
-    private val preferencesRepository: UserPreferencesRepository
+    private val preferencesRepository: UserPreferencesRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExportUiState())
@@ -248,6 +250,14 @@ class ExportViewModel @Inject constructor(
                 val dir = File(context.filesDir, "exports").apply { mkdirs() }
                 val localFile = File(dir, fileName).apply { writeBytes(fileBytes) }
 
+                // 알림 센터에 실제 내보내기 이력 로그 실시간 누적
+                notificationRepository.addExportLog(
+                    fileName = fileName,
+                    receiptCount = receipts.size,
+                    format = if (includeImages) "ZIP" else "CSV",
+                    filePath = localFile.absolutePath
+                )
+
                 _uiState.update {
                     it.copy(
                         showSaveSuccessDialog = true,
@@ -299,7 +309,20 @@ class ExportViewModel @Inject constructor(
         val pdfFile = _uiState.value.previewPdfFile ?: return
         viewModelScope.launch {
             try {
+                val receipts = withContext(Dispatchers.IO) {
+                    val (startMs, endMs) = getDateRangeMs()
+                    repository.getReceiptsByDateRange(startMs, endMs)
+                }
                 saveToDownloads(context, pdfFile.name, "application/pdf", pdfFile.readBytes())
+
+                // 알림 센터에 실제 PDF 다운로드 이력 로그 실시간 누적
+                notificationRepository.addExportLog(
+                    fileName = pdfFile.name,
+                    receiptCount = receipts.size,
+                    format = "PDF",
+                    filePath = pdfFile.absolutePath
+                )
+
                 _uiState.update {
                     it.copy(
                         showPdfPreviewDialog = false,
@@ -325,6 +348,15 @@ class ExportViewModel @Inject constructor(
                 }
                 val periodLabel = getPeriodLabel()
                 val pdfFile = PdfReportGenerator.generate(context, receipts, periodLabel, author, dept, purpose)
+                
+                // 알림 센터에 실제 PDF 이메일 공유 이력 로그 실시간 누적
+                notificationRepository.addExportLog(
+                    fileName = pdfFile.name,
+                    receiptCount = receipts.size,
+                    format = "PDF",
+                    filePath = pdfFile.absolutePath
+                )
+
                 launchEmailIntent(context, pdfFile)
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "이메일 전송 중 오류가 발생했습니다: ${e.message}") }
@@ -346,6 +378,15 @@ class ExportViewModel @Inject constructor(
                 }
                 val periodLabel = getPeriodLabel()
                 val pdfFile = PdfReportGenerator.generate(context, receipts, periodLabel, author, dept, purpose)
+
+                // 알림 센터에 실제 PDF 메신저 공유 이력 로그 실시간 누적
+                notificationRepository.addExportLog(
+                    fileName = pdfFile.name,
+                    receiptCount = receipts.size,
+                    format = "PDF",
+                    filePath = pdfFile.absolutePath
+                )
+
                 launchMessengerIntent(context, pdfFile, "application/pdf")
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "메신저 공유 중 오류가 발생했습니다: ${e.message}") }
