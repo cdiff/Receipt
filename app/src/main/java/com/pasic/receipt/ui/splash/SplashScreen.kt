@@ -20,16 +20,25 @@ fun SplashScreen(
     onSplashFinished: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.splash_animation))
+    val compositionResult = rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.splash_animation))
+    val composition = compositionResult.value
+    val isFailure = compositionResult.isFailure
+
     val progress by animateLottieCompositionAsState(
         composition = composition,
         iterations = 1
     )
 
-    // 애니메이션 1회 완주 시 부드럽게 메인 화면 전환 (최대 2.8초 안전 타임아웃)
+    // 로딩 실패 시 크래시 없이 즉시 홈 화면으로 안전하게 진입
+    LaunchedEffect(isFailure) {
+        if (isFailure) {
+            onSplashFinished()
+        }
+    }
+
+    // 애니메이션 1회 완주 시 부드럽게 메인 화면 전환
     LaunchedEffect(progress) {
         if (progress >= 0.99f) {
-            delay(100)
             onSplashFinished()
         }
     }
@@ -43,11 +52,13 @@ fun SplashScreen(
         contentAlignment = Alignment.Center,
         modifier = modifier.fillMaxSize()
     ) {
-        LottieAnimation(
-            composition = composition,
-            progress = { progress },
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (composition != null) {
+            LottieAnimation(
+                composition = composition,
+                progress = { progress },
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
