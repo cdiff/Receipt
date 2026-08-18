@@ -91,8 +91,14 @@ class ReceiptListViewModel @Inject constructor(
             matchesRange && matchesQuery && matchesChips
         }
 
-        // 일별 그룹핑 ("8월 6일 (목)", "8월 5일 (수)" 등)
-        val grouped = filtered.groupBy { receipt ->
+        // 💡 [영수증 결제일 최신순 정렬]: 실제 결제 날짜가 최신인 순서대로 완벽 정렬 후 일별 그룹핑
+        val sortedReceipts = filtered.sortedWith(
+            compareByDescending<ReceiptEntity> { it.extractLocalDate() }
+                .thenByDescending { it.createdAt }
+        )
+
+        // 일별 그룹핑 ("8월 18일 (화)", "8월 17일 (월)" 등 달력 최신순)
+        val grouped = sortedReceipts.groupBy { receipt ->
             extractDailyGroupHeader(receipt)
         }
 
@@ -103,8 +109,8 @@ class ReceiptListViewModel @Inject constructor(
             availableCategories = availableCats,
             selectedCategories = selectedCats,
             groupedReceipts = grouped,
-            totalCount = filtered.size,
-            totalAmountSum = filtered.sumOf { it.totalAmount },
+            totalCount = sortedReceipts.size,
+            totalAmountSum = sortedReceipts.sumOf { it.totalAmount },
             isLoading = false
         )
     }.stateIn(
