@@ -37,9 +37,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.Image
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -86,11 +92,18 @@ fun RecentReceiptsList(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         if (receipts.isEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "아직 등록된 영수증이 없습니다.",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF64748B)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             ReceiptEmptyStateView(onScanClick = onScanClick)
         } else {
+            Spacer(modifier = Modifier.height(16.dp))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(end = 16.dp)
@@ -104,8 +117,10 @@ fun RecentReceiptsList(
 }
 
 /**
- * 영수증 데이터가 없을 때 표시되는 스캔 유도 Empty State 뷰.
- * 파란 원 배경 안의 카메라 아이콘이 위아래 6dp 범위로 둥둥 뜨는 애니메이션 적용.
+ * 영수증 데이터가 없을 때 표시되는 점선 테두리 스캔 유도 Empty State 카드.
+ * - 원형 배경 없는 깔끔한 ScanLine 아이콘
+ * - 남색 "영수증을 스캔하세요" 타이틀
+ * - "카메라로 촬영하거나 갤러리에서 선택" 가이드 문구
  */
 @Composable
 private fun ReceiptEmptyStateView(
@@ -113,95 +128,85 @@ private fun ReceiptEmptyStateView(
 ) {
     val haptics = LocalHapticFeedback.current
 
-    // 위아래 6dp 부드러운 플로팅 (둥둥 뜨는) 애니메이션
-    val infiniteTransition = rememberInfiniteTransition(label = "floatingCamera")
+    // 은은하고 자연스러운 미세 플로팅(±3.5dp) 애니메이션
+    val infiniteTransition = rememberInfiniteTransition(label = "scanLineFloating")
     val offsetY by infiniteTransition.animateFloat(
-        initialValue = -6f,
-        targetValue = 6f,
+        initialValue = -3.5f,
+        targetValue = 3.5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
+            animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "offsetY"
+        label = "scanLineOffsetY"
     )
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp, horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // 1. 위아래 둥둥 뜨는 카메라 원형 아이콘
-        Box(
-            modifier = Modifier
-                .graphicsLayer { translationY = offsetY }
-                .size(88.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFDCEBFE)), // 연한 소프트 파란색
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Lucide.Camera,
-                contentDescription = null,
-                tint = FabNavy,
-                modifier = Modifier.size(36.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // 2. 제목
-        Text(
-            text = "영수증을 스캔하세요",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 3. 설명 (2줄 정렬)
-        Text(
-            text = "첫 영수증을 등록하고 자동 소비 분석 리포트를 확인해보세요.",
-            fontSize = 14.sp,
-            color = TextSecondary,
-            textAlign = TextAlign.Center,
-            lineHeight = 20.sp
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 4. "영수증 촬영하기" CTA 버튼
-        Button(
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                onScanClick()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = FabNavy,
-                contentColor = Color.White
-            )
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Lucide.Camera,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White)
+            .drawBehind {
+                val strokeWidth = 1.5.dp.toPx()
+                val cornerRadius = 20.dp.toPx()
+                val pathEffect = PathEffect.dashPathEffect(
+                    floatArrayOf(12f, 10f),
+                    0f
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "영수증 촬영하기",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                drawRoundRect(
+                    color = Color(0xFFCBD5E1),
+                    topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
+                    size = Size(
+                        size.width - strokeWidth,
+                        size.height - strokeWidth
+                    ),
+                    cornerRadius = CornerRadius(cornerRadius, cornerRadius),
+                    style = Stroke(
+                        width = strokeWidth,
+                        pathEffect = pathEffect
+                    )
                 )
             }
+            .clickable {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onScanClick()
+            }
+            .padding(vertical = 36.dp, horizontal = 20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // 1. #3B82F6 컬러의 미세 플로팅 ScanLine 심볼
+            Icon(
+                imageVector = Lucide.ScanLine,
+                contentDescription = "영수증 스캔",
+                tint = Color(0xFF3B82F6),
+                modifier = Modifier
+                    .graphicsLayer { translationY = offsetY }
+                    .size(42.dp)
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // 2. 남색 메인 타이틀
+            Text(
+                text = "영수증을 스캔하세요",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0F172A)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 3. 소프트 그레이 서브텍스트
+            Text(
+                text = "카메라로 촬영하거나 갤러리에서 선택",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF64748B),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

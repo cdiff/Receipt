@@ -1,26 +1,32 @@
 package com.pasic.receipt.ui.main
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -28,19 +34,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pasic.receipt.ui.components.AppFloatingToast
 import com.pasic.receipt.ui.components.ReceiptBottomNavigation
 import com.pasic.receipt.ui.export.ExportScreen
 import com.pasic.receipt.ui.home.HomeScreen
 import com.pasic.receipt.ui.receipts.ReceiptListScreen
+import com.pasic.receipt.util.ToastEventBus
 import dev.chrisbanes.haze.HazeState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * 앱 전체 화면 및 하단 iOS Liquid Glass 네비게이션을 단 1곳에서 공통 제어하는 최상위 래퍼 스캐폴드.
- * 3단계 화면 전환 규칙:
- * 1. 탭 간 이동: 180ms 부드러운 FadeIn/Out + 미세 0.98x 스케일
- * 2. 상세 페이지: iOS 스타일 수평 Slide In/Out
- * 3. 카메라/작성 모달: 아래에서 위로 Slide In Vertically
+ * 앱 전체 화면 및 하단 네비게이션, 전역 토스트 오버레이, 뒤로가기 처리를 단 1곳에서 공통 제어하는 최상위 래퍼 스캐폴드.
  */
 @Composable
 fun MainAppScaffold(
@@ -48,13 +54,56 @@ fun MainAppScaffold(
 ) {
     val hazeState = remember { HazeState() }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "home"
+
+    // 뒤로가기 2회 종료 감지 상태
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
+
+    // 전역 토스트 메시지 상태
+    var activeToastMessage by remember { mutableStateOf<String?>(null) }
+
+    // 홈 화면 [더보기] 스피드 다이얼(Speed Dial) 표시 상태 (하단 탭바까지 덮는 최상위 오버레이)
+    var showSpeedDial by remember { mutableStateOf(false) }
+
+    // ToastEventBus 수신 및 2초 자동 닫힘 타이머
+    LaunchedEffect(Unit) {
+        ToastEventBus.toastEvents.collectLatest { msg ->
+            activeToastMessage = msg
+            delay(2000)
+            activeToastMessage = null
+        }
+    }
 
     // 각 화면에서 콜백으로 올려주는 원시 스크롤 진행도 (0f ~ 1f)
     var rawScrollProgress by remember { mutableFloatStateOf(0f) }
     // 탭 전환 직후 사라지는 화면의 스크롤 콜백이 뒤늦게 올라오는 걸 차단하는 플래그
-    var isTransitioning by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var isTransitioning by remember { mutableStateOf(false) }
+
+    // ── 1. 타 탭(영수증, 내보내기, 설정)에서 뒤로가기 ➔ 즉시 홈 탭으로 직행 이동 ──
+    BackHandler(enabled = currentRoute in listOf("receipts", "export", "settings")) {
+        isTransitioning = true
+        rawScrollProgress = 0f
+        navController.navigate("home") {
+            popUpTo("home") { inclusive = true }
+        }
+        coroutineScope.launch {
+            delay(300)
+            isTransitioning = false
+        }
+    }
+
+    // ── 2. 홈 탭에서 뒤로가기 ➔ 2초 내 2회 입력 시 앱 안전 종료 ──
+    BackHandler(enabled = currentRoute == "home") {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastBackPressTime < 2000L) {
+            (context as? Activity)?.finish()
+        } else {
+            lastBackPressTime = currentTime
+            ToastEventBus.showToast("뒤로가기 버튼을 한 번 더 누르면 종료됩니다")
+        }
+    }
 
     // tween 애니메이션 — 화면 전환 시 탭바가 튀지 않고 즉시 부드럽게 리셋됨
     val scrollProgress by animateFloatAsState(
@@ -62,6 +111,9 @@ fun MainAppScaffold(
         animationSpec = tween(durationMillis = 150),
         label = "globalNavScrollProgress"
     )
+
+    // 하단 탭바 표시 여부
+    val hasBottomBar = currentRoute !in listOf("scan", "scan_result") && !currentRoute.startsWith("receipt_detail")
 
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -87,7 +139,7 @@ fun MainAppScaffold(
                                 rawScrollProgress = 0f
                                 navController.navigate("scan")
                                 coroutineScope.launch {
-                                    kotlinx.coroutines.delay(300)
+                                    delay(300)
                                     isTransitioning = false
                                 }
                             },
@@ -95,14 +147,21 @@ fun MainAppScaffold(
                             onNavigateToReceiptList = {
                                 isTransitioning = true
                                 rawScrollProgress = 0f
-                                navController.navigate("receipts") { launchSingleTop = true }
+                                navController.navigate("receipts") {
+                                    popUpTo("home") { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                                 coroutineScope.launch {
-                                    kotlinx.coroutines.delay(300)
+                                    delay(300)
                                     isTransitioning = false
                                 }
                             },
                             onNavigateToReceiptDetail = { id ->
                                 navController.navigate("receipt_detail/$id")
+                            },
+                            onMoreClick = {
+                                showSpeedDial = true
                             }
                         )
                     }
@@ -116,7 +175,7 @@ fun MainAppScaffold(
                                 rawScrollProgress = 0f
                                 navController.navigate("home") { popUpTo("home") { inclusive = true } }
                                 coroutineScope.launch {
-                                    kotlinx.coroutines.delay(300)
+                                    delay(300)
                                     isTransitioning = false
                                 }
                             },
@@ -125,7 +184,7 @@ fun MainAppScaffold(
                                 rawScrollProgress = 0f
                                 navController.navigate("scan")
                                 coroutineScope.launch {
-                                    kotlinx.coroutines.delay(300)
+                                    delay(300)
                                     isTransitioning = false
                                 }
                             },
@@ -138,14 +197,14 @@ fun MainAppScaffold(
                     // 2. 스캔 카메라 모달 (아래에서 위로 slideInVertically)
                     composable(
                         route = "scan",
-                        enterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
-                        exitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
-                        popEnterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
-                        popExitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } }
+                        enterTransition = { slideInVertically(animationSpec = tween(320)) { fullHeight -> fullHeight } },
+                        exitTransition = { slideOutVertically(animationSpec = tween(280)) { fullHeight -> fullHeight } },
+                        popEnterTransition = { slideInVertically(animationSpec = tween(320)) { fullHeight -> fullHeight } },
+                        popExitTransition = { slideOutVertically(animationSpec = tween(280)) { fullHeight -> fullHeight } }
                     ) { backStackEntry ->
-                        val scanViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(backStackEntry)
+                        val scanSharedViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(backStackEntry)
                         com.pasic.receipt.ui.scan.CameraScanScreen(
-                            viewModel = scanViewModel,
+                            viewModel = scanSharedViewModel,
                             onNavigateToResult = {
                                 navController.navigate("scan_result")
                             },
@@ -155,28 +214,37 @@ fun MainAppScaffold(
                         )
                     }
 
-                    // 3. 스캔 결과 검증 및 편집 모달
+                    // 3. 스캔 결과 화면
                     composable(
                         route = "scan_result",
-                        enterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
-                        exitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
-                        popEnterTransition = { androidx.compose.animation.slideInVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } },
-                        popExitTransition = { androidx.compose.animation.slideOutVertically(animationSpec = tween(300)) { fullHeight -> fullHeight } }
+                        enterTransition = { fadeIn(animationSpec = tween(250)) },
+                        exitTransition = { fadeOut(animationSpec = tween(250)) },
+                        popEnterTransition = { fadeIn(animationSpec = tween(250)) },
+                        popExitTransition = { fadeOut(animationSpec = tween(250)) }
                     ) {
-                        val parentEntry = remember(it) { navController.getBackStackEntry("scan") }
-                        val scanViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(parentEntry)
-                        com.pasic.receipt.ui.scan.ReceiptScanResultScreen(
-                            viewModel = scanViewModel,
-                            onNavigateBackToScan = {
-                                navController.popBackStack("scan", inclusive = false)
-                            },
-                            onSaveSuccess = {
-                                navController.popBackStack("home", inclusive = false)
-                            }
-                        )
+                        val prevBackStackEntry = remember(navController) {
+                            runCatching { navController.getBackStackEntry("scan") }.getOrNull()
+                        }
+                        if (prevBackStackEntry != null) {
+                            val scanSharedViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(prevBackStackEntry)
+                            com.pasic.receipt.ui.scan.ReceiptScanResultScreen(
+                                viewModel = scanSharedViewModel,
+                                onNavigateBackToScan = {
+                                    navController.popBackStack()
+                                },
+                                onSaveSuccess = {
+                                    navController.navigate("receipts") {
+                                        popUpTo("home") { inclusive = false }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            )
+                        } else {
+                            navController.popBackStack()
+                        }
                     }
 
-                    // 4. 영수증 상세 화면 (iOS 스타일 슬라이드 전환)
+                    // 4. 영수증 상세 페이지 (수평 슬라이드)
                     composable(
                         route = "receipt_detail/{receiptId}",
                         enterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
@@ -192,7 +260,7 @@ fun MainAppScaffold(
                                 navController.popBackStack()
                             },
                             onNavigateToEdit = { id ->
-                                // 편집 기능 바텀시트/화면 확장 가능
+                                // 편집 기능
                             }
                         )
                     }
@@ -217,7 +285,7 @@ fun MainAppScaffold(
         } // Surface
 
         // 단 1개의 공통 탭바 — 스캔/결과/상세 모달 진입 시 숨김 처리
-        if (currentRoute !in listOf("scan", "scan_result") && !currentRoute.startsWith("receipt_detail")) {
+        if (hasBottomBar) {
             ReceiptBottomNavigation(
                 currentRoute = currentRoute,
                 hazeState = hazeState,
@@ -227,18 +295,29 @@ fun MainAppScaffold(
                         isTransitioning = true
                         rawScrollProgress = 0f
                         coroutineScope.launch {
-                            kotlinx.coroutines.delay(300)
+                            delay(300)
                             isTransitioning = false
                         }
                         when (targetRoute) {
                             "home" -> navController.navigate("home") {
                                 popUpTo("home") { inclusive = true }
-                            }
-                            "receipts" -> navController.navigate("receipts") {
                                 launchSingleTop = true
                             }
-                            "export" -> navController.navigate("export") { launchSingleTop = true }
-                            "settings" -> navController.navigate("settings") { launchSingleTop = true }
+                            "receipts" -> navController.navigate("receipts") {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            "export" -> navController.navigate("export") {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            "settings" -> navController.navigate("settings") {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 },
@@ -247,5 +326,35 @@ fun MainAppScaffold(
                     .widthIn(max = 600.dp)
             )
         }
+
+        // ── [더보기] 스피드 다이얼(Speed Dial) 최상위 오버레이 (하단 탭바까지 100% 덮음) ──
+        com.pasic.receipt.ui.home.components.HomeSpeedDialMenu(
+            visible = showSpeedDial,
+            onDismiss = { showSpeedDial = false },
+            hazeState = hazeState,
+            onCustomerCenterClick = {
+                showSpeedDial = false
+                com.pasic.receipt.util.ToastEventBus.showToast("고객센터 준비 중입니다.")
+            },
+            onMonthlyReportClick = {
+                showSpeedDial = false
+                com.pasic.receipt.util.ToastEventBus.showToast("이번달 지출 보고서 준비 중입니다.")
+            },
+            onManualInputClick = {
+                showSpeedDial = false
+                com.pasic.receipt.util.ToastEventBus.showToast("직접 수기 입력 준비 중입니다.")
+            },
+            onZipBackupClick = {
+                showSpeedDial = false
+                com.pasic.receipt.util.ToastEventBus.showToast("ZIP 파일 안전 보관 준비 중입니다.")
+            }
+        )
+
+        // ── 전역 단일 플로팅 알약 캡슐 토스트 오버레이 (탭바 유무에 따른 동적 패딩) ──
+        AppFloatingToast(
+            message = activeToastMessage,
+            bottomPadding = if (hasBottomBar) 96.dp else 48.dp,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }

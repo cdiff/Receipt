@@ -39,7 +39,7 @@ fun MainCommonTopBar(
             Image(
                 painter = painterResource(id = R.drawable.ic_home_logo),
                 contentDescription = "SSOC",
-                modifier = Modifier.height(26.dp)
+                modifier = Modifier.height(20.dp)
             )
         }
 

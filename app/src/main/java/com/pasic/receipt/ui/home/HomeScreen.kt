@@ -1,8 +1,12 @@
 package com.pasic.receipt.ui.home
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -12,8 +16,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,6 +35,7 @@ import com.pasic.receipt.ui.home.components.SpendingUsageChart
 import com.pasic.receipt.ui.theme.ScreenBackground
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.launch
 import kotlin.math.min
 
 // 네비게이션 바 높이(64dp) + 하단 여백(16dp) + 스크롤 여유 여백(20dp)
@@ -40,6 +51,7 @@ fun HomeScreen(
     onScrollProgressChanged: (Float) -> Unit = {},
     onNavigateToReceiptList: () -> Unit = {},
     onNavigateToReceiptDetail: (Long) -> Unit = {},
+    onMoreClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -54,6 +66,9 @@ fun HomeScreen(
     LaunchedEffect(rawProgress) {
         onScrollProgressChanged(rawProgress)
     }
+
+    val coroutineScope = rememberCoroutineScope()
+    var chartOffsetY by remember { mutableIntStateOf(0) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -85,15 +100,34 @@ fun HomeScreen(
             // 3. 4-Grid 빠른 메뉴
             QuickActionGrid(
                 onScanClick = onScanClick,
-                onNavigateToReceiptList = onNavigateToReceiptList
+                onNavigateToReceiptList = onNavigateToReceiptList,
+                onChartClick = {
+                    coroutineScope.launch {
+                        // 차트 영역이 화면 상단에 알맞게 보이도록 스무스 스크롤 (헤더 여백 고려)
+                        val target = maxOf(0, chartOffsetY - 16)
+                        scrollState.animateScrollTo(
+                            value = target,
+                            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+                        )
+                    }
+                },
+                onMoreClick = onMoreClick
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 4. 소비 사용량 차트 (월별, 주별, 일별)
-            SpendingUsageChart(
-                receipts = uiState.allReceipts
-            )
+            // 4. 소비 사용량 차트 (월별, 주별, 일별) - 위치 측정(onGloballyPositioned)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coordinates ->
+                        chartOffsetY = coordinates.positionInParent().y.toInt()
+                    }
+            ) {
+                SpendingUsageChart(
+                    receipts = uiState.allReceipts
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
