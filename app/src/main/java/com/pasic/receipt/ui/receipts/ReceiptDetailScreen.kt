@@ -80,7 +80,7 @@ fun ReceiptDetailScreen(
 
     LaunchedEffect(uiState.isDeleted) {
         if (uiState.isDeleted) {
-            Toast.makeText(context, "영수증이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+            com.pasic.receipt.util.ToastEventBus.showToast("영수증이 삭제되었습니다.")
             onNavigateBack()
         }
     }

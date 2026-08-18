@@ -91,7 +91,7 @@ fun ReceiptTransactionSpecCard(
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("사업자등록번호", receipt.businessNumber)
                             clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "사업자등록번호가 복사되었습니다.", Toast.LENGTH_SHORT).show()
+                            com.pasic.receipt.util.ToastEventBus.showToast("사업자등록번호가 복사되었습니다.")
                         }
                     }
                 ) {

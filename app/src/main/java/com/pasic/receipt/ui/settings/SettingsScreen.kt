@@ -66,19 +66,16 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    var activeToastMessage by remember { mutableStateOf<String?>(null) }
-
     val rawProgress = min(scrollState.value / SCROLL_THRESHOLD_PX, 1f)
     LaunchedEffect(rawProgress) {
         onScrollProgressChanged(rawProgress)
     }
 
+    // ViewModel의 토스트 이벤트를 전역 ToastEventBus로 전달
     LaunchedEffect(uiState.toastMessage) {
         uiState.toastMessage?.let { msg ->
-            activeToastMessage = msg
+            com.pasic.receipt.util.ToastEventBus.showToast(msg)
             viewModel.clearToastMessage()
-            delay(2200)
-            activeToastMessage = null
         }
     }
 
@@ -196,7 +193,7 @@ fun SettingsScreen(
                     restoreLauncher.launch(arrayOf("application/zip"))
                 },
                 onGoogleDriveClick = {
-                    activeToastMessage = "Google Drive 클라우드 백업 준비 중입니다."
+                    com.pasic.receipt.util.ToastEventBus.showToast("Google Drive 클라우드 백업 준비 중입니다.")
                 }
             )
         }
@@ -216,31 +213,6 @@ fun SettingsScreen(
             LicenseDialog(
                 onDismiss = { viewModel.setShowLicenseDialog(false) }
             )
-        }
-
-        // ── 아이콘 없이 깔끔한 플로팅 커스텀 토스트 (반투명 연회색 캡슐 스타일) ──
-        AnimatedVisibility(
-            visible = activeToastMessage != null,
-            enter = fadeIn(animationSpec = tween(150)) + slideInVertically(initialOffsetY = { it / 2 }),
-            exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(targetOffsetY = { it / 2 }),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .shadow(6.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.08f))
-                    .background(Color(0xFFF1F5F9).copy(alpha = 0.94f), RoundedCornerShape(24.dp))
-                    .padding(horizontal = 20.dp, vertical = 11.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = activeToastMessage ?: "",
-                    color = Color(0xFF0F172A),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
         }
     }
 }
