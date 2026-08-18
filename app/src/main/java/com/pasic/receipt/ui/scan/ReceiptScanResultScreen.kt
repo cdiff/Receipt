@@ -356,6 +356,7 @@ fun ReceiptScanResultScreen(
                             category = selectedCategory,
                             categoryColor = selectedCategoryColor,
                             imagePath = ocrResult?.imagePath ?: "",
+                            subCategory = ocrResult?.subCategory,
                             paymentMethod = ocrResult?.paymentMethod ?: "신용카드",
                             proofType = ocrResult?.proofType ?: "일반영수증",
                             vatAmount = ocrResult?.vatAmount

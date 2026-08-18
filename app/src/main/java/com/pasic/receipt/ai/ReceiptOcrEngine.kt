@@ -23,8 +23,9 @@ data class OcrResult(
     val currency: String = "KRW",
     val businessNumber: String = "",
     val confidenceScore: Int = 100,
-    val category: String = "식비",
+    val category: String = "식비", // 대분류 (예: 식비, 교통비, 사무용품, 미분류)
     val categoryColor: String = "#FEF3C7",
+    val subCategory: String = "", // 소분류 (예: 카페, 일반식당, 택시, 편의점 등)
     val suggestedNewCategory: String = "",
     val paymentMethod: String = "신용카드",
     val proofType: String = "일반영수증",
@@ -40,14 +41,15 @@ object ReceiptOcrEngine {
             "date"                   to Schema.string(description = "결제 일시 (예: 8월 5일 · 오후 3:30 또는 2026-08-05 15:30)"),
             "totalAmount"            to Schema.double(description = "최종 결제 금액 (숫자만, 예: 15500.0)"),
             "businessNumber"         to Schema.string(description = "사업자등록번호 'XXX-XX-XXXXX' 형식 (모르면 빈 문자열)"),
-            "category"               to Schema.string(description = "기존 카테고리 목록 중 가장 적합한 이름 (없으면 미분류)"),
+            "category"               to Schema.string(description = "기존 카테고리 목록 중 가장 적합한 대분류 이름 1개 (없으면 미분류)"),
+            "subCategory"            to Schema.string(description = "세부 업종 및 품목 소분류 (예: 카페, 식당, 패스트푸드, 택시, 지하철, 문구, 편의점 등). 모르면 빈 문자열"),
             "suggestedNewCategory"   to Schema.string(description = "기존 카테고리에 맞지 않는 경우 추천할 새 카테고리명. 적합하면 빈 문자열"),
-            "paymentMethod"          to Schema.string(description = "결제 수단 (예: 신용카드, 체크카드, 현금, 간편결제중 하나)"),
+            "paymentMethod"          to Schema.string(description = "결제 수단 (예: 신용카드, 체크카드, 현금, 간편결제 중 하나)"),
             "proofType"              to Schema.string(description = "증빙 유형 (예: 일반영수증, 현금영수증, 세금계산서 중 하나)"),
             "vatAmount"              to Schema.double(description = "영수증에 적힌 부가가치세 금액 (숫자만. 없으면 0.0)"),
             "confidence"             to Schema.integer(description = "0~100 사이 인식 신뢰도 점수")
         ),
-        optionalProperties = listOf("businessNumber", "category", "suggestedNewCategory", "paymentMethod", "proofType", "vatAmount")
+        optionalProperties = listOf("businessNumber", "category", "subCategory", "suggestedNewCategory", "paymentMethod", "proofType", "vatAmount")
     )
 
     private val generativeModel by lazy {
@@ -90,19 +92,20 @@ object ReceiptOcrEngine {
             val catListStr = existingCategories.joinToString(", ")
             val promptText = """
                 영수증 이미지를 분석하여 아래 규칙에 따라 정보를 추출하세요.
-                현재 등록된 카테고리 목록: [$catListStr]
+                현재 등록된 대분류 카테고리 목록: [$catListStr]
 
                 규칙:
                 1. merchantName: 상호명 (없으면 빈 문자열)
                 2. date: 결제 일시 (영수증 날짜와 시간)
                 3. totalAmount: 최종 결제 금액 (숫자만)
                 4. businessNumber: 사업자등록번호 "XXX-XX-XXXXX" (없으면 빈 문자열)
-                5. category: 상호명 및 세부 품목을 분석하여 "대분류/소분류" 형식(예: 식비/카페, 식비/식당, 식비/디저트, 교통비/지하철, 교통비/택시, 사무용품/문구 등)으로 구체적으로 카테고리를 추출하세요.
-                6. suggestedNewCategory: 기존 카테고리 목록에 없거나 새로운 종류라면 추천 카테고리 단어 하나(예: 뷰티, 의료비, 취미 등)를 작성하고, 기존 항목과 일치하면 빈 문자열("")로 하세요.
-                7. paymentMethod: 영수증 문구/카드종류를 분석하여 "신용카드", "체크카드", "현금", "간편결제" 중 하나 선택 (확실치 않으면 "신용카드")
-                8. proofType: "일반영수증", "현금영수증", "세금계산서" 중 하나 선택 (확실치 않으면 "일반영수증")
-                9. vatAmount: 영수증에 표기된 부가세/부가세액 금액 (숫자만. 표기 없으면 0.0)
-                10. confidence: 인식 신뢰도 점수 (0~100 정수)
+                5. category: 상호명 및 세부 품목을 분석하여 현재 등록된 대분류 목록 [$catListStr] 중 가장 적합한 항목 1개(예: 식비, 교통비, 사무용품 등)를 정확히 일치시켜 선택하세요.
+                6. subCategory: 영수증의 구체적인 세부 업종 및 품목 소분류 1개(예: 카페, 일반식당, 패스트푸드, 디저트, 택시, 지하철, 버스, 주유, 문구, 도서, 편의점, 마트, 병원, 약국 등)를 단어 하나로 작성하세요.
+                7. suggestedNewCategory: 기존 대분류 목록에 전혀 맞지 않는 새로운 대분류일 때만 추천 단어 1개(예: 뷰티, 의료비, 취미 등)를 적고, 기존 목록에 해당하면 빈 문자열("")로 하세요.
+                8. paymentMethod: 영수증 문구/카드종류를 분석하여 "신용카드", "체크카드", "현금", "간편결제" 중 하나 선택 (확실치 않으면 "신용카드")
+                9. proofType: "일반영수증", "현금영수증", "세금계산서" 중 하나 선택 (확실치 않으면 "일반영수증")
+                10. vatAmount: 영수증에 표기된 부가세/부가세액 금액 (숫자만. 표기 없으면 0.0)
+                11. confidence: 인식 신뢰도 점수 (0~100 정수)
             """.trimIndent()
 
             val inputContent = content {
@@ -112,14 +115,18 @@ object ReceiptOcrEngine {
 
             val response = generativeModel.generateContent(inputContent)
             val jsonText = response.text ?: ""
-            parseGeminiJsonResponse(jsonText, imagePath)
+            parseGeminiJsonResponse(jsonText, imagePath, existingCategories)
         } catch (e: Exception) {
             safeLogE("ReceiptOcrEngine", "processBitmap error: ${e.message}", e)
             generateUnrecognizedOcrResult(imagePath)
         }
     }
 
-    private fun parseGeminiJsonResponse(jsonText: String, imagePath: String): OcrResult {
+    private fun parseGeminiJsonResponse(
+        jsonText: String,
+        imagePath: String,
+        existingCategories: List<String> = listOf("식비", "교통비", "사무용품", "미분류")
+    ): OcrResult {
         if (jsonText.isBlank()) return generateUnrecognizedOcrResult(imagePath)
 
         return try {
@@ -139,7 +146,8 @@ object ReceiptOcrEngine {
             val dateStr = extractJsonField(jsonPayload, "date")
             val totalAmount = extractJsonField(jsonPayload, "totalAmount").toDoubleOrNull() ?: 0.0
             val businessNumber = extractJsonField(jsonPayload, "businessNumber")
-            val category = extractJsonField(jsonPayload, "category").ifBlank { "식비" }
+            val rawCategory = extractJsonField(jsonPayload, "category")
+            var subCategory = extractJsonField(jsonPayload, "subCategory")
             val suggestedNewCategory = extractJsonField(jsonPayload, "suggestedNewCategory").replace("#", "").trim()
             val confidence = extractJsonField(jsonPayload, "confidence").toIntOrNull()?.coerceIn(30, 100) ?: 85
 
@@ -155,7 +163,18 @@ object ReceiptOcrEngine {
                 null
             }
 
-            val (finalCategory, categoryColor) = inferCategory(merchantName, category)
+            // 슬래시가 섞여 들어온 경우 분리 보정 (예: "식비/카페" -> 대분류: "식비", 소분류: "카페")
+            val sanitizedCat = if (rawCategory.contains("/")) {
+                val parts = rawCategory.split("/")
+                if (subCategory.isBlank() && parts.size > 1) {
+                    subCategory = parts[1].trim()
+                }
+                parts[0].trim()
+            } else {
+                rawCategory.trim()
+            }
+
+            val (finalCategory, categoryColor) = inferCategory(merchantName, sanitizedCat, existingCategories)
 
             OcrResult(
                 merchantName = merchantName,
@@ -166,6 +185,7 @@ object ReceiptOcrEngine {
                 confidenceScore = confidence,
                 category = finalCategory,
                 categoryColor = categoryColor,
+                subCategory = subCategory,
                 suggestedNewCategory = suggestedNewCategory,
                 paymentMethod = paymentMethod,
                 proofType = proofType,
@@ -190,8 +210,6 @@ object ReceiptOcrEngine {
         return ""
     }
 
-
-
     private fun safeLogE(tag: String, msg: String, tr: Throwable? = null) {
         try {
             Log.e(tag, msg, tr)
@@ -200,27 +218,45 @@ object ReceiptOcrEngine {
         }
     }
 
-    private fun inferCategory(merchant: String, suggestedCat: String): Pair<String, String> {
+    private fun inferCategory(
+        merchant: String,
+        suggestedCat: String,
+        existingCategories: List<String> = listOf("식비", "교통비", "사무용품", "미분류")
+    ): Pair<String, String> {
+        // 기존 목록에 정확히 일치하는 항목이 있으면 즉시 채택
+        if (existingCategories.contains(suggestedCat)) {
+            return suggestedCat to getHexForCategory(suggestedCat)
+        }
+
+        // 상호명 및 제안 키워드 기반 스마트 매핑
         val cat = when {
-            suggestedCat.isNotBlank() && suggestedCat != "미분류" -> suggestedCat
             merchant.contains("카페") || merchant.contains("스타벅스") || merchant.contains("식당") ||
                     merchant.contains("푸드") || merchant.contains("버거") || merchant.contains("투썸") ||
-                    merchant.contains("GS25") || merchant.contains("CU") -> "식비"
+                    merchant.contains("커피") || merchant.contains("베이커리") ||
+                    suggestedCat.contains("식") || suggestedCat.contains("카페") || suggestedCat.contains("음식") -> "식비"
+
             merchant.contains("택시") || merchant.contains("지하철") || merchant.contains("KTX") ||
-                    merchant.contains("카카오 T") || merchant.contains("교통") -> "교통비"
+                    merchant.contains("카카오 T") || merchant.contains("교통") || merchant.contains("주유") ||
+                    suggestedCat.contains("교통") || suggestedCat.contains("운전") -> "교통비"
+
             merchant.contains("문구") || merchant.contains("서점") || merchant.contains("다이소") ||
-                    merchant.contains("사무") -> "사무용품"
+                    merchant.contains("사무") || suggestedCat.contains("사무") || suggestedCat.contains("용품") -> "사무용품"
+
+            suggestedCat.isNotBlank() && suggestedCat != "미분류" -> suggestedCat
             else -> "미분류"
         }
 
-        val colorHex = when (cat) {
+        val colorHex = getHexForCategory(cat)
+        return cat to colorHex
+    }
+
+    private fun getHexForCategory(cat: String): String {
+        return when (cat) {
             "식비" -> "#FEF3C7"     // 연주황
             "교통비" -> "#DBEAFE"   // 연파랑
             "사무용품" -> "#F3E8FF" // 연보라
             else -> "#F1F5F9"       // 연회색
         }
-
-        return cat to colorHex
     }
 
     private fun generateUnrecognizedOcrResult(imagePath: String): OcrResult {
@@ -235,6 +271,7 @@ object ReceiptOcrEngine {
             confidenceScore = 30,
             category = "미분류",
             categoryColor = "#F1F5F9",
+            subCategory = "",
             suggestedNewCategory = "",
             imagePath = imagePath
         )
@@ -250,9 +287,10 @@ object ReceiptOcrEngine {
             currency = "KRW",
             businessNumber = "201-81-21515",
             confidenceScore = 95,
-            category = "미분류",
-            categoryColor = "#F1F5F9",
-            suggestedNewCategory = "디저트",
+            category = "식비",
+            categoryColor = "#FEF3C7",
+            subCategory = "카페",
+            suggestedNewCategory = "",
             imagePath = imagePath
         )
     }

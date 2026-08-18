@@ -265,6 +265,7 @@ class ScanSharedViewModel @Inject constructor(
         category: String,
         categoryColor: String,
         imagePath: String,
+        subCategory: String? = null,
         paymentMethod: String = "신용카드",
         proofType: String = "일반영수증",
         vatAmount: Double? = null
@@ -281,6 +282,7 @@ class ScanSharedViewModel @Inject constructor(
                     ocrConfidence = confidence,
                     category = category,
                     categoryColor = categoryColor,
+                    subCategory = subCategory?.takeIf { it.isNotBlank() },
                     imagePath = imagePath,
                     paymentMethod = paymentMethod.ifBlank { "신용카드" },
                     proofType = proofType.ifBlank { "일반영수증" },

@@ -121,19 +121,20 @@ fun ReceiptDetailHeader(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 카테고리 뱃지
-        val categoryDisplay = remember(receipt.category, receipt.merchantName) {
-            if (receipt.category.contains("/")) {
-                receipt.category
+        // 카테고리 뱃지 (대분류 · 소분류)
+        val categoryDisplay = remember(receipt.category, receipt.subCategory, receipt.merchantName) {
+            val sub = receipt.subCategory?.takeIf { it.isNotBlank() } ?: when {
+                receipt.merchantName.contains("카페") || receipt.merchantName.contains("스타벅스") || receipt.merchantName.contains("투썸") || receipt.merchantName.contains("커피") -> "카페"
+                receipt.merchantName.contains("택시") -> "택시"
+                receipt.merchantName.contains("지하철") -> "지하철"
+                receipt.merchantName.contains("식당") || receipt.merchantName.contains("푸드") || receipt.merchantName.contains("버거") -> "식당"
+                receipt.merchantName.contains("편의점") || receipt.merchantName.contains("GS25") || receipt.merchantName.contains("CU") -> "편의점"
+                else -> null
+            }
+            if (sub != null && sub != receipt.category) {
+                "${receipt.category} · $sub"
             } else {
-                val sub = when {
-                    receipt.merchantName.contains("카페") || receipt.merchantName.contains("스타벅스") || receipt.merchantName.contains("투썸") -> "카페"
-                    receipt.merchantName.contains("택시") -> "택시"
-                    receipt.merchantName.contains("지하철") -> "지하철"
-                    receipt.merchantName.contains("식당") || receipt.merchantName.contains("푸드") || receipt.merchantName.contains("버거") -> "식당"
-                    else -> "기타"
-                }
-                "${receipt.category}/$sub"
+                receipt.category
             }
         }
 
