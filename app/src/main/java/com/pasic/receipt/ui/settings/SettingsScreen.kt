@@ -94,6 +94,28 @@ fun SettingsScreen(
         uri?.let { viewModel.restoreBackupZip(context, it) }
     }
 
+    // Android 13+ 알림 권한 요청 런처
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            com.pasic.receipt.util.ToastEventBus.showToast("알림 권한이 비활성화되어 푸시를 받을 수 없습니다.")
+        }
+    }
+
+    fun handleNotificationToggle(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+        if (enabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        onToggle(enabled)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -165,7 +187,25 @@ fun SettingsScreen(
 
             SectionDividerBand()
 
-            // ── 섹션 4. 기본 설정 ───────────────────────────────────────
+            // ── 섹션 4. 알림 설정 ───────────────────────────────────────
+            com.pasic.receipt.ui.settings.sections.NotificationSettingsSection(
+                scanReminderEnabled = userPrefs.scanReminderPushEnabled,
+                expenseDDayEnabled = userPrefs.expenseDDayPushEnabled,
+                backupReminderEnabled = userPrefs.backupReminderPushEnabled,
+                onToggleScanReminder = { enabled ->
+                    handleNotificationToggle(enabled) { viewModel.toggleScanReminderPush(it) }
+                },
+                onToggleExpenseDDay = { enabled ->
+                    handleNotificationToggle(enabled) { viewModel.toggleExpenseDDayPush(it) }
+                },
+                onToggleBackupReminder = { enabled ->
+                    handleNotificationToggle(enabled) { viewModel.toggleBackupReminderPush(it) }
+                }
+            )
+
+            SectionDividerBand()
+
+            // ── 섹션 5. 기본 설정 ───────────────────────────────────────
             GeneralSettingsSection(
                 currentTheme = userPrefs.appTheme,
                 onThemeClick = { viewModel.setShowThemeDialog(true) },

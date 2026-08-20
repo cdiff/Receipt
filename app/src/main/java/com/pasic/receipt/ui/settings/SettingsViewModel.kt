@@ -159,6 +159,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { preferencesRepository.updateAiCategoryEnabled(enabled) }
     }
 
+    fun toggleScanReminderPush(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.updateScanReminderPushEnabled(enabled) }
+    }
+
+    fun toggleExpenseDDayPush(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.updateExpenseDDayPushEnabled(enabled) }
+    }
+
+    fun toggleBackupReminderPush(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.updateBackupReminderPushEnabled(enabled) }
+    }
+
     fun updateAppTheme(theme: AppThemeOption) {
         viewModelScope.launch { preferencesRepository.updateAppTheme(theme) }
     }
@@ -227,6 +239,12 @@ class SettingsViewModel @Inject constructor(
                         }
                     }
                 }
+
+                // 💾 백업 성공 즉시 타임스탬프 갱신 (30일 타이머 리셋)
+                context.getSharedPreferences("receipt_notification_prefs", Context.MODE_PRIVATE)
+                    .edit()
+                    .putLong("last_backup_export_timestamp", System.currentTimeMillis())
+                    .apply()
 
                 _uiState.update {
                     it.copy(

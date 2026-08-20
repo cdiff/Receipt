@@ -35,6 +35,9 @@ data class UserPreferences(
     val autoCropEnabled: Boolean = false,
     val bwEnhancementEnabled: Boolean = false,
     val aiCategoryEnabled: Boolean = true,
+    val scanReminderPushEnabled: Boolean = true,
+    val expenseDDayPushEnabled: Boolean = true,
+    val backupReminderPushEnabled: Boolean = true,
     val appTheme: AppThemeOption = AppThemeOption.SYSTEM
 )
 
@@ -57,6 +60,10 @@ class UserPreferencesRepository @Inject constructor(
         val AUTO_CROP = booleanPreferencesKey("auto_crop")
         val BW_ENHANCEMENT = booleanPreferencesKey("bw_enhancement")
         val AI_CATEGORY = booleanPreferencesKey("ai_category")
+
+        val SCAN_REMINDER_PUSH = booleanPreferencesKey("scan_reminder_push")
+        val EXPENSE_DDAY_PUSH = booleanPreferencesKey("expense_dday_push")
+        val BACKUP_REMINDER_PUSH = booleanPreferencesKey("backup_reminder_push")
 
         val APP_THEME = stringPreferencesKey("app_theme")
     }
@@ -90,6 +97,9 @@ class UserPreferencesRepository @Inject constructor(
                 autoCropEnabled = preferences[PreferencesKeys.AUTO_CROP] ?: false,
                 bwEnhancementEnabled = preferences[PreferencesKeys.BW_ENHANCEMENT] ?: false,
                 aiCategoryEnabled = preferences[PreferencesKeys.AI_CATEGORY] ?: true,
+                scanReminderPushEnabled = preferences[PreferencesKeys.SCAN_REMINDER_PUSH] ?: true,
+                expenseDDayPushEnabled = preferences[PreferencesKeys.EXPENSE_DDAY_PUSH] ?: true,
+                backupReminderPushEnabled = preferences[PreferencesKeys.BACKUP_REMINDER_PUSH] ?: true,
                 appTheme = themeOption
             )
         }
@@ -140,6 +150,18 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun updateAiCategoryEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.AI_CATEGORY] = enabled }
+    }
+
+    suspend fun updateScanReminderPushEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.SCAN_REMINDER_PUSH] = enabled }
+    }
+
+    suspend fun updateExpenseDDayPushEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.EXPENSE_DDAY_PUSH] = enabled }
+    }
+
+    suspend fun updateBackupReminderPushEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.BACKUP_REMINDER_PUSH] = enabled }
     }
 
     suspend fun updateAppTheme(theme: AppThemeOption) {

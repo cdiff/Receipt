@@ -208,6 +208,11 @@ class NotificationRepository @Inject constructor(
         saveDismissedNoticeIds(newSet)
     }
 
+    fun getNoticeById(id: String): NoticeBannerData? {
+        val defaultNotice = NoticeBannerData()
+        return if (id == defaultNotice.id || id.isBlank() || id == "latest") defaultNotice else defaultNotice
+    }
+
     /**
      * 알림 개별 삭제 (스마트 알림 영구 숨김 및 내보내기 로그 영구 제거)
      */
@@ -268,6 +273,9 @@ class NotificationRepository @Inject constructor(
         if (isMonthEndApproaching) {
             val dDay = lastDayOfMonth - currentDay
             val dDayLabel = if (dDay == 0) "D-Day" else "D-$dDay"
+            val expenseNoticeTime = todayStartMs + (1000L * 60 * 60 * 9) // 오늘 오전 09:00 기준
+            val expenseTimestamp = if (now >= expenseNoticeTime) expenseNoticeTime else now
+            val expenseTimeLabel = formatDynamicTimeLabel(expenseTimestamp, todayStartMs, yesterdayStartMs, now)
 
             if (thisMonthCount > 0) {
                 items.add(
@@ -276,8 +284,8 @@ class NotificationRepository @Inject constructor(
                         category = NotificationCategory.EXPENSE_REPORT,
                         title = "이번 달 등록된 경비 영수증이 ${thisMonthCount}건(${formattedTotal}원) 있습니다.",
                         message = "월말 정산 및 경비 제출($dDayLabel)을 위해 엑셀 또는 PDF 보고서로 내보내 보세요.",
-                        timestampMs = now - (1000 * 60 * 15),
-                        timeLabel = "방금 전",
+                        timestampMs = expenseTimestamp,
+                        timeLabel = expenseTimeLabel,
                         section = DateSection.TODAY,
                         isRead = readIds.contains("expense_summary_${currentMonth}"),
                         targetRoute = "export"
@@ -290,8 +298,8 @@ class NotificationRepository @Inject constructor(
                         category = NotificationCategory.EXPENSE_REPORT,
                         title = "이번 달 등록된 지출 영수증이 아직 없습니다.",
                         message = "월말 정산($dDayLabel) 전, 이번 달 사용하신 영수증을 '영수증 쏙'에 등록해 보세요.",
-                        timestampMs = now - (1000 * 60 * 15),
-                        timeLabel = "방금 전",
+                        timestampMs = expenseTimestamp,
+                        timeLabel = expenseTimeLabel,
                         section = DateSection.TODAY,
                         isRead = readIds.contains("expense_summary_empty_${currentMonth}"),
                         targetRoute = "scan"
@@ -300,33 +308,36 @@ class NotificationRepository @Inject constructor(
             }
         }
 
-        // ── 2. [영수증·일정] 저녁 8시(20:00) 기준 스캔 스마트 분기 알림 ──
-        if (todayReceipts.isEmpty()) {
-            items.add(
-                NotificationItem(
-                    id = "scan_reminder_today",
-                    category = NotificationCategory.SCAN_REMINDER,
-                    title = "오늘 사용한 영수증을 등록해 보세요.",
-                    message = "오늘 결제한 지출 내역이 있나요? 잊어버리기 전에 영수증 쏙으로 쏙! 스캔해 보세요.",
-                    timestampMs = now - (1000 * 60 * 60 * 2),
-                    timeLabel = if (currentHour >= 20) "저녁 8:00" else "2시간 전",
-                    section = DateSection.TODAY,
-                    isRead = readIds.contains("scan_reminder_today"),
-                    targetRoute = "scan"
-                )
-            )
-        } else {
+        // ── 2. [영수증·일정] 스캔 스마트 분기 알림 (저녁 8시 리마인더 & 오늘 스캔 성공) ──
+        if (todayReceipts.isNotEmpty()) {
+            val lastScanTime = todayReceipts.maxOf { it.createdAt }
             items.add(
                 NotificationItem(
                     id = "scan_success_today",
                     category = NotificationCategory.SCAN_REMINDER,
                     title = "오늘 지출 영수증 ${todayReceipts.size}건 정리 완료!",
                     message = "오늘 등록하신 영수증 ${todayReceipts.size}건이 안전하게 저장되었습니다. 내역을 확인해 보세요.",
-                    timestampMs = todayReceipts.maxOf { it.createdAt },
-                    timeLabel = "오늘",
+                    timestampMs = lastScanTime,
+                    timeLabel = formatDynamicTimeLabel(lastScanTime, todayStartMs, yesterdayStartMs, now),
                     section = DateSection.TODAY,
                     isRead = readIds.contains("scan_success_today"),
                     targetRoute = "receipts"
+                )
+            )
+        } else if (currentHour >= 20) {
+            // 저녁 8시(20:00) 이후에만 리마인더 알림 활성화
+            val eveningReminderTime = todayStartMs + (1000L * 60 * 60 * 20) // 오늘 저녁 20:00 기준
+            items.add(
+                NotificationItem(
+                    id = "scan_reminder_today",
+                    category = NotificationCategory.SCAN_REMINDER,
+                    title = "오늘 사용한 영수증을 등록해 보세요.",
+                    message = "오늘 결제한 지출 내역이 있나요? 잊어버리기 전에 영수증 쏙으로 쏙! 스캔해 보세요.",
+                    timestampMs = eveningReminderTime,
+                    timeLabel = formatDynamicTimeLabel(eveningReminderTime, todayStartMs, yesterdayStartMs, now),
+                    section = DateSection.TODAY,
+                    isRead = readIds.contains("scan_reminder_today"),
+                    targetRoute = "scan"
                 )
             )
         }
@@ -339,7 +350,7 @@ class NotificationRepository @Inject constructor(
                     log.timestampMs >= yesterdayStartMs -> DateSection.YESTERDAY
                     else -> DateSection.PREVIOUS
                 }
-                val timeLabel = formatLogTimeLabel(log.timestampMs, todayStartMs, yesterdayStartMs)
+                val timeLabel = formatDynamicTimeLabel(log.timestampMs, todayStartMs, yesterdayStartMs, now)
                 val isZip = log.format.equals("ZIP", ignoreCase = true)
 
                 items.add(
@@ -357,15 +368,16 @@ class NotificationRepository @Inject constructor(
                 )
             }
         } else {
-            // 내보내기 이력이 없을 때의 기본 안내 로그
+            // 내보내기 이력이 없을 때의 기본 안내 로그 (어제 날짜 기준)
+            val guideTimestamp = yesterdayStartMs + (1000L * 60 * 60 * 14)
             items.add(
                 NotificationItem(
                     id = "export_guide_log",
                     category = NotificationCategory.EXPORT_LOG,
                     title = "영수증 내보내기 기능을 활용해 보세요.",
                     message = "원하는 기간의 영수증을 Excel, PDF, ZIP 형식으로 언제든 간편하게 추출할 수 있습니다.",
-                    timestampMs = now - (1000 * 60 * 60 * 24),
-                    timeLabel = "어제",
+                    timestampMs = guideTimestamp,
+                    timeLabel = formatDynamicTimeLabel(guideTimestamp, todayStartMs, yesterdayStartMs, now),
                     section = DateSection.YESTERDAY,
                     isRead = readIds.contains("export_guide_log"),
                     targetRoute = "export"
@@ -373,20 +385,21 @@ class NotificationRepository @Inject constructor(
             )
         }
 
-        // ── 5. [내보내기·보관] 20건 이상 백업 권장 알림 (7일 쿨다운) ──
+        // ── 4. [내보내기·보관] 20건 이상 백업 권장 알림 (7일 쿨다운) ──
         if (receipts.size >= 20) {
             val lastBackupReadMs = prefs.getLong("backup_reminder_read_time", 0L)
             val isCoolDownActive = (now - lastBackupReadMs) < (1000L * 60 * 60 * 24 * 7) // 7일 쿨다운
 
             if (!isCoolDownActive || !readIds.contains("backup_reminder_20")) {
+                val backupNoticeTimestamp = now - (1000L * 60 * 60 * 48) // 2일 전
                 items.add(
                     NotificationItem(
                         id = "backup_reminder_20",
                         category = NotificationCategory.BACKUP_REMINDER,
                         title = "소중한 영수증 데이터를 안전하게 백업해 보세요.",
                         message = "현재 등록된 영수증이 ${receipts.size}건 있습니다. 데이터 유실 방지를 위해 ZIP 안전 백업을 권장합니다.",
-                        timestampMs = now - (1000 * 60 * 60 * 48),
-                        timeLabel = "2일 전",
+                        timestampMs = backupNoticeTimestamp,
+                        timeLabel = formatDynamicTimeLabel(backupNoticeTimestamp, todayStartMs, yesterdayStartMs, now),
                         section = DateSection.PREVIOUS,
                         isRead = readIds.contains("backup_reminder_20"),
                         targetRoute = "export"
@@ -400,17 +413,43 @@ class NotificationRepository @Inject constructor(
             .sortedByDescending { it.timestampMs }
     }
 
-    private fun formatLogTimeLabel(timestampMs: Long, todayStartMs: Long, yesterdayStartMs: Long): String {
+    /**
+     * 🕒 섹션별 맞춤 동적 시간 포맷터
+     * - [오늘]  1분 미만: "방금 전", 1~59분: "N분 전", 1시간 이상: "N시간 전"
+     * - [어제]  발생 시각: "오전/오후 h:mm" (예: 오후 11:55)
+     * - [이전]  날짜: "M월 d일" (예: 8월 18일)
+     */
+    private fun formatDynamicTimeLabel(
+        timestampMs: Long,
+        todayStartMs: Long,
+        yesterdayStartMs: Long,
+        now: Long
+    ): String {
         return when {
+            // [오늘] 00:00 이후 발생
             timestampMs >= todayStartMs -> {
-                val diffMins = (System.currentTimeMillis() - timestampMs) / (1000 * 60)
-                if (diffMins < 5) "방금 전" else SimpleDateFormat("a h:mm", Locale.KOREAN).format(Date(timestampMs))
+                val diffMs = maxOf(0L, now - timestampMs)
+                val diffMins = diffMs / (1000 * 60)
+                val diffHours = diffMins / 60
+                when {
+                    diffMins < 1 -> "방금 전"
+                    diffMins < 60 -> "${diffMins}분 전"
+                    else -> "${diffHours}시간 전"
+                }
             }
+            // [어제] 어제 00:00 ~ 23:59:59 발생
             timestampMs >= yesterdayStartMs -> {
-                "어제 " + SimpleDateFormat("a h:mm", Locale.KOREAN).format(Date(timestampMs))
+                SimpleDateFormat("a h:mm", Locale.KOREAN).format(Date(timestampMs))
             }
+            // [이전] 그저께 이전 발생
             else -> {
-                SimpleDateFormat("M월 d일", Locale.KOREAN).format(Date(timestampMs))
+                val calNow = Calendar.getInstance().apply { timeInMillis = now }
+                val calTarget = Calendar.getInstance().apply { timeInMillis = timestampMs }
+                if (calNow.get(Calendar.YEAR) == calTarget.get(Calendar.YEAR)) {
+                    SimpleDateFormat("M월 d일", Locale.KOREAN).format(Date(timestampMs))
+                } else {
+                    SimpleDateFormat("yyyy년 M월 d일", Locale.KOREAN).format(Date(timestampMs))
+                }
             }
         }
     }

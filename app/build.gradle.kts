@@ -98,6 +98,9 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
     // ML Kit — Korean OCR
     implementation(libs.mlkit.text.recognition.korean)
 

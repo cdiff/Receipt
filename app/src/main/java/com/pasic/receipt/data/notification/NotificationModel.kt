@@ -35,8 +35,19 @@ data class NotificationItem(
 
 data class NoticeBannerData(
     val id: String = "notice_v110",
-    val title: String = "[업데이트] 스마트 영수증 인식 AI 엔진 개선 안내",
+    val title: String = "앱 버전 1.1.0 업데이트 안내",
+    val bannerTitle: String = "[업데이트] 스마트 영수증 인식 AI 엔진 개선 안내",
     val date: String = "2026.08.18",
+    val content: String = """
+영수증 AI 스캔 성능이 대폭 향상되었습니다.
+
+• 흐릿한 영수증 인식률 40% 개선 (1280px 초고화질 전처리)
+• 스캔 처리 속도 2배 향상 및 상호명/품목 자동 교차 분석
+• 지능형 스마트 알림 센터 & 저녁 스캔 리마인더 도입
+• 원클릭 데이터 백업/복원 및 카카오톡 1:1 고객센터 지원
+
+앞으로도 더 나은 서비스를 제공하기 위해 노력하겠습니다. 감사합니다.
+    """.trimIndent(),
     val isDismissed: Boolean = false
 )
 

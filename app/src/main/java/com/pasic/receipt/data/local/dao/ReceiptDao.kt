@@ -12,6 +12,9 @@ interface ReceiptDao {
     @Query("SELECT * FROM receipts WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllReceipts(): Flow<List<ReceiptEntity>>
 
+    @Query("SELECT * FROM receipts WHERE isDeleted = 0 ORDER BY createdAt DESC")
+    suspend fun getAllReceiptsList(): List<ReceiptEntity>
+
     @Query("SELECT * FROM receipts WHERE isDeleted = 0 ORDER BY createdAt DESC LIMIT 5")
     fun getRecentReceipts(): Flow<List<ReceiptEntity>>
 
