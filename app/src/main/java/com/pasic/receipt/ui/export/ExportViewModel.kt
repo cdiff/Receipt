@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.local.entity.extractLocalDate
 import com.pasic.receipt.data.notification.NotificationRepository
 import com.pasic.receipt.data.preferences.ALL_CSV_COLUMNS
 import com.pasic.receipt.data.preferences.UserPreferences
@@ -82,14 +83,13 @@ class ExportViewModel @Inject constructor(
 
         viewModelScope.launch {
             preferencesRepository.userPreferencesFlow.collect { prefs ->
-                val format = if (prefs.defaultExportFormat == "PDF") ExportFormat.PDF else ExportFormat.EXCEL
                 val columns = ALL_CSV_COLUMNS.filter { prefs.csvSelectedColumns.contains(it) }
                 _uiState.update { state ->
                     state.copy(
                         defaultAuthor = prefs.defaultAuthor,
                         defaultDepartment = prefs.defaultDepartment,
                         defaultPurpose = prefs.defaultPurpose,
-                        selectedFormat = if (!hasInitializedDefaults) format else state.selectedFormat,
+                        selectedFormat = if (!hasInitializedDefaults) ExportFormat.EXCEL else state.selectedFormat,
                         csvHeaderColumns = if (columns.isNotEmpty()) columns else ALL_CSV_COLUMNS,
                         userPreferences = prefs
                     )
@@ -189,10 +189,28 @@ class ExportViewModel @Inject constructor(
     fun dismissSaveSuccessDialog() = _uiState.update { it.copy(showSaveSuccessDialog = false) }
     fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 
+    private suspend fun getSortedReceipts(startMs: Long, endMs: Long): List<ReceiptEntity> {
+        val receipts = repository.getReceiptsByDateRange(startMs, endMs)
+        val isGroupByCategory = _uiState.value.groupByCategory
+
+        return if (isGroupByCategory) {
+            receipts.sortedWith(
+                compareBy<ReceiptEntity> { it.category }
+                    .thenByDescending { it.extractLocalDate() }
+                    .thenByDescending { it.createdAt }
+            )
+        } else {
+            receipts.sortedWith(
+                compareByDescending<ReceiptEntity> { it.extractLocalDate() }
+                    .thenByDescending { it.createdAt }
+            )
+        }
+    }
+
     private fun refreshTargetCount() {
         viewModelScope.launch {
             val (startMs, endMs) = getDateRangeMs()
-            val receipts = repository.getReceiptsByDateRange(startMs, endMs)
+            val receipts = withContext(Dispatchers.IO) { getSortedReceipts(startMs, endMs) }
             _uiState.update {
                 it.copy(
                     targetReceiptCount = receipts.size,
@@ -209,7 +227,7 @@ class ExportViewModel @Inject constructor(
             _uiState.update { it.copy(isGenerating = true) }
             try {
                 val (startMs, endMs) = getDateRangeMs()
-                val receipts = repository.getReceiptsByDateRange(startMs, endMs)
+                val receipts = withContext(Dispatchers.IO) { getSortedReceipts(startMs, endMs) }
                 val includeImages = _uiState.value.includeImages
                 val periodLabel = getPeriodLabel()
 
@@ -258,6 +276,13 @@ class ExportViewModel @Inject constructor(
                     filePath = localFile.absolutePath
                 )
 
+                if (includeImages) {
+                    context.getSharedPreferences("receipt_notification_prefs", Context.MODE_PRIVATE)
+                        .edit()
+                        .putLong("last_backup_export_timestamp", System.currentTimeMillis())
+                        .apply()
+                }
+
                 _uiState.update {
                     it.copy(
                         showSaveSuccessDialog = true,
@@ -281,7 +306,7 @@ class ExportViewModel @Inject constructor(
             try {
                 val (startMs, endMs) = getDateRangeMs()
                 val receipts = withContext(Dispatchers.IO) {
-                    repository.getReceiptsByDateRange(startMs, endMs)
+                    getSortedReceipts(startMs, endMs)
                 }
                 val periodLabel = getPeriodLabel()
 
@@ -311,7 +336,7 @@ class ExportViewModel @Inject constructor(
             try {
                 val receipts = withContext(Dispatchers.IO) {
                     val (startMs, endMs) = getDateRangeMs()
-                    repository.getReceiptsByDateRange(startMs, endMs)
+                    getSortedReceipts(startMs, endMs)
                 }
                 saveToDownloads(context, pdfFile.name, "application/pdf", pdfFile.readBytes())
 
@@ -374,7 +399,7 @@ class ExportViewModel @Inject constructor(
             try {
                 val (startMs, endMs) = getDateRangeMs()
                 val receipts = withContext(Dispatchers.IO) {
-                    repository.getReceiptsByDateRange(startMs, endMs)
+                    getSortedReceipts(startMs, endMs)
                 }
                 val periodLabel = getPeriodLabel()
                 val pdfFile = PdfReportGenerator.generate(context, receipts, periodLabel, author, dept, purpose)
@@ -475,7 +500,7 @@ class ExportViewModel @Inject constructor(
 
         val (startMs, endMs) = getDateRangeMs()
         val receipts = withContext(Dispatchers.IO) {
-            repository.getReceiptsByDateRange(startMs, endMs)
+            getSortedReceipts(startMs, endMs)
         }
         val periodLabel = getPeriodLabel()
         val dir = File(context.filesDir, "exports").apply { mkdirs() }
