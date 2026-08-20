@@ -118,7 +118,7 @@ fun MainAppScaffold(
     val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState()
 
     // 하단 탭바 표시 여부
-    val hasBottomBar = currentRoute !in listOf("scan", "scan_result", "notifications") && !currentRoute.startsWith("receipt_detail")
+    val hasBottomBar = currentRoute !in listOf("scan", "scan_result", "notifications") && !currentRoute.startsWith("receipt_detail") && !currentRoute.startsWith("notice_detail")
 
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -331,7 +331,27 @@ fun MainAppScaffold(
                             onNavigateToRoute = { route ->
                                 navController.navigate(route)
                             },
+                            onNavigateToNoticeDetail = { noticeId ->
+                                navController.navigate("notice_detail/$noticeId")
+                            },
                             viewModel = notificationViewModel
+                        )
+                    }
+
+                    // 8. 업데이트 공지 상세 화면
+                    composable(
+                        route = "notice_detail/{noticeId}",
+                        enterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
+                        exitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popEnterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popExitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } }
+                    ) { backStackEntry ->
+                        val noticeId = backStackEntry.arguments?.getString("noticeId") ?: "notice_v110"
+                        com.pasic.receipt.ui.notification.NoticeDetailScreen(
+                            noticeId = noticeId,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
                         )
                     }
                 } // NavHost

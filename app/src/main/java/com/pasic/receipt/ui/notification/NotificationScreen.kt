@@ -91,6 +91,7 @@ import kotlinx.coroutines.launch
 fun NotificationScreen(
     onNavigateBack: () -> Unit,
     onNavigateToRoute: (String) -> Unit,
+    onNavigateToNoticeDetail: (String) -> Unit = {},
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
     val selectedTab by viewModel.selectedTab.collectAsState()
@@ -223,6 +224,9 @@ fun NotificationScreen(
                     ) {
                         NotificationNoticeBanner(
                             banner = noticeBanner!!,
+                            onClick = {
+                                onNavigateToNoticeDetail(noticeBanner!!.id)
+                            },
                             onDismiss = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 viewModel.dismissNoticeBanner(noticeBanner!!.id)
@@ -338,6 +342,7 @@ private fun NotificationTabBar(
 @Composable
 private fun NotificationNoticeBanner(
     banner: NoticeBannerData,
+    onClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Surface(
@@ -346,6 +351,7 @@ private fun NotificationNoticeBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
@@ -371,7 +377,7 @@ private fun NotificationNoticeBanner(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = banner.title,
+                    text = banner.bannerTitle.ifBlank { banner.title },
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0F172A),
