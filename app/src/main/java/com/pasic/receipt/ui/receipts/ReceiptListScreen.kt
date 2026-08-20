@@ -56,6 +56,7 @@ import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.SlidersHorizontal
 import com.pasic.receipt.data.local.entity.ReceiptEntity
 import com.pasic.receipt.ui.components.DateRangePickerBottomSheet
+import com.pasic.receipt.ui.theme.BrandPrimary
 import com.pasic.receipt.ui.theme.CategoryThemeRegistry
 import com.pasic.receipt.ui.theme.TextMuted
 import com.pasic.receipt.ui.theme.TextPrimary
@@ -81,6 +82,7 @@ fun ReceiptListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
     var showDatePickerSheet by remember { mutableStateOf(false) }
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
 
     // LazyColumn의 첫 번째 아이템 오프셋으로 스크롤 진행도 계산 (0f ~ 1f)
     val rawProgress by remember {
@@ -98,6 +100,18 @@ fun ReceiptListScreen(
         onScrollProgressChanged(rawProgress)
     }
 
+    // 필터 조건(상세 필터, 카테고리 칩, 월/기간 선택) 변경 시 목록을 즉시 최상단(0번)으로 스크롤 리셋
+    LaunchedEffect(
+        uiState.filterOptions,
+        uiState.selectedCategories,
+        uiState.selectedYearMonth,
+        uiState.selectedDateRange
+    ) {
+        if (lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 0) {
+            lazyListState.scrollToItem(0)
+        }
+    }
+
     if (showDatePickerSheet) {
         DateRangePickerBottomSheet(
             onDismissRequest = { showDatePickerSheet = false },
@@ -106,6 +120,17 @@ fun ReceiptListScreen(
             onRangeSelected = { start, end ->
                 viewModel.onDateRangeSelected(start, end)
             }
+        )
+    }
+
+    if (showFilterBottomSheet) {
+        com.pasic.receipt.ui.receipts.components.ReceiptFilterBottomSheet(
+            currentOptions = uiState.filterOptions,
+            allReceipts = uiState.allReceiptsForFilter,
+            onApply = { options ->
+                viewModel.onFilterOptionsChanged(options)
+            },
+            onDismiss = { showFilterBottomSheet = false }
         )
     }
 
@@ -118,9 +143,10 @@ fun ReceiptListScreen(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            // 상단 여백 (알약형 헤더 여유 공간)
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // 1. 최상단 인터랙티브 월 셀렉터 헤더 (< 2026년 10월 >) -> 클릭 시 달력 바텀시트 오픈
+            // 1. 월 선택 / 기간 선택 헤더 (< 2026년 10월 >)
             MonthHeaderSelector(
                 selectedYearMonth = uiState.selectedYearMonth,
                 selectedDateRange = uiState.selectedDateRange,
@@ -139,17 +165,24 @@ fun ReceiptListScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // 3. 가로 스크롤 필터 칩 목록 (DB 카테고리 100% 동적 표출)
+            // 3. 가로 스크롤 필터 칩 목록 (DB 카테고리 100% 동적 표출 + 상세 필터 버튼)
+            val isFilterActive = uiState.filterOptions.sortOrder != com.pasic.receipt.ui.receipts.SortOrder.DATE_DESC ||
+                    uiState.filterOptions.paymentMethod != "전체" ||
+                    uiState.filterOptions.proofType != "전체" ||
+                    uiState.filterOptions.hasImageOnly
+
             FilterChipRow(
                 categories = uiState.availableCategories,
                 selectedCategories = uiState.selectedCategories,
-                onChipToggle = viewModel::onFilterChipToggled
+                onChipToggle = viewModel::onFilterChipToggled,
+                isFilterActive = isFilterActive,
+                onSlidersClick = { showFilterBottomSheet = true }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 4. 일별 그룹핑 영수증 리스트 (hazeSource 등록으로 최상단 탭바 유리 블러 투영)
-            if (uiState.groupedReceipts.isEmpty()) {
+            // 4. 영수증 리스트 (hazeSource 등록으로 최상단 탭바 유리 블러 투영)
+            if (uiState.totalCount == 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -162,7 +195,28 @@ fun ReceiptListScreen(
                         color = TextMuted
                     )
                 }
+            } else if (uiState.isAmountSorted) {
+                // 💡 [금액순 정렬 시] 날짜 헤더 없이 순수 순위별 단일 리스트 렌더링
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .hazeSource(hazeState),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    contentPadding = PaddingValues(top = 6.dp, bottom = 100.dp)
+                ) {
+                    items(
+                        items = uiState.sortedFlatReceipts,
+                        key = { it.id }
+                    ) { receipt ->
+                        ReceiptListItemRow(
+                            receipt = receipt,
+                            onClick = { onNavigateToDetail(receipt.id) }
+                        )
+                    }
+                }
             } else {
+                // 💡 [날짜순 정렬 시] 기존 일별 그룹핑 헤더와 함께 렌더링
                 LazyColumn(
                     state = lazyListState,
                     modifier = Modifier
@@ -345,7 +399,9 @@ private fun ReceiptSearchBar(
 private fun FilterChipRow(
     categories: List<String>,
     selectedCategories: Set<String>,
-    onChipToggle: (String) -> Unit
+    onChipToggle: (String) -> Unit,
+    isFilterActive: Boolean = false,
+    onSlidersClick: () -> Unit = {}
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -359,10 +415,10 @@ private fun FilterChipRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isSelected) Color(0xFF0F172A) else Color.White)
+                    .background(if (isSelected) BrandPrimary else Color.White)
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0),
+                        color = if (isSelected) BrandPrimary else Color(0xFFE2E8F0),
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clickable(
@@ -392,16 +448,21 @@ private fun FilterChipRow(
                     .size(38.dp)
                     .clip(CircleShape)
                     .background(Color.White)
-                    .border(1.dp, Color(0xFFE2E8F0), CircleShape)
+                    .border(
+                        width = if (isFilterActive) 1.2.dp else 1.dp,
+                        color = if (isFilterActive) BrandPrimary else Color(0xFFE2E8F0),
+                        shape = CircleShape
+                    )
                     .clickable {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSlidersClick()
                     },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Lucide.SlidersHorizontal,
                     contentDescription = "Filter Sliders",
-                    tint = Color(0xFF475569),
+                    tint = if (isFilterActive) BrandPrimary else Color(0xFF475569),
                     modifier = Modifier.size(18.dp)
                 )
             }

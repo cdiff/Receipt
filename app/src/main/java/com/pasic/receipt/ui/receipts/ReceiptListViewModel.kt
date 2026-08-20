@@ -23,13 +23,31 @@ enum class FilterChipType(val label: String) {
     UNCLASSIFIED("미분류")
 }
 
+enum class SortOrder(val label: String) {
+    DATE_DESC("결제일 최신순"),
+    DATE_ASC("결제일 과거순"),
+    AMOUNT_DESC("금액 높은순"),
+    AMOUNT_ASC("금액 낮은순")
+}
+
+data class ReceiptFilterOptions(
+    val sortOrder: SortOrder = SortOrder.DATE_DESC,
+    val paymentMethod: String = "전체",
+    val proofType: String = "전체",
+    val hasImageOnly: Boolean = false
+)
+
 data class ReceiptListUiState(
     val searchQuery: String = "",
     val selectedYearMonth: YearMonth? = YearMonth.now(),
     val selectedDateRange: Pair<LocalDate, LocalDate>? = null, // (시작일, 종료일) 범위 선택
     val availableCategories: List<String> = listOf("식비", "교통비", "사무용품", "미분류"),
     val selectedCategories: Set<String> = emptySet(),
+    val filterOptions: ReceiptFilterOptions = ReceiptFilterOptions(),
+    val isAmountSorted: Boolean = false,
+    val sortedFlatReceipts: List<ReceiptEntity> = emptyList(),
     val groupedReceipts: Map<String, List<ReceiptEntity>> = emptyMap(),
+    val allReceiptsForFilter: List<ReceiptEntity> = emptyList(),
     val totalCount: Int = 0,
     val totalAmountSum: Double = 0.0,
     val isLoading: Boolean = false
@@ -52,38 +70,47 @@ class ReceiptListViewModel @Inject constructor(
     private val _selectedDateRange = MutableStateFlow<Pair<LocalDate, LocalDate>?>(null)
     val selectedDateRange: StateFlow<Pair<LocalDate, LocalDate>?> = _selectedDateRange
 
+    private val _filterOptions = MutableStateFlow(ReceiptFilterOptions())
+    val filterOptions: StateFlow<ReceiptFilterOptions> = _filterOptions
+
     val uiState: StateFlow<ReceiptListUiState> = combine(
         repository.getAllReceipts(),
         _searchQuery,
         _selectedCategories,
         _selectedYearMonth,
-        _selectedDateRange
-    ) { allReceipts, query, selectedCats, yearMonth, dateRange ->
-        val rawReceipts = allReceipts
+        _selectedDateRange,
+        _filterOptions
+    ) { flows ->
+        @Suppress("UNCHECKED_CAST")
+        val rawReceipts = flows[0] as List<ReceiptEntity>
+        val query = flows[1] as String
+        @Suppress("UNCHECKED_CAST")
+        val selectedCats = flows[2] as Set<String>
+        val yearMonth = flows[3] as YearMonth?
+        @Suppress("UNCHECKED_CAST")
+        val dateRange = flows[4] as Pair<LocalDate, LocalDate>?
+        val filterOptions = flows[5] as ReceiptFilterOptions
 
         // 로컬 DB 영수증에 등록된 커스텀 카테고리까지 100% 동적 추출
         val defaultCats = listOf("식비", "교통비", "사무용품", "미분류")
-        val dbCats = allReceipts.map { it.category }.filter { it.isNotBlank() }
+        val dbCats = rawReceipts.map { it.category }.filter { it.isNotBlank() }
         val availableCats = (defaultCats + dbCats).distinct()
 
-        val filtered = rawReceipts.filter { receipt ->
+        // 1단계: 날짜 범위 / 월 필터 + 검색어 + 상단 카테고리 칩
+        val baseFiltered = rawReceipts.filter { receipt ->
             val receiptDate = receipt.extractLocalDate()
-            // 1. 날짜 범위 필터 (dateRange 가 설정된 경우)
             val matchesRange = if (dateRange != null) {
                 !receiptDate.isBefore(dateRange.first) && !receiptDate.isAfter(dateRange.second)
             } else {
-                // dateRange 가 없으면 월 필터
                 if (yearMonth == null) true else {
                     receiptDate.year == yearMonth.year && receiptDate.monthValue == yearMonth.monthValue
                 }
             }
 
-            // 2. 검색어 필터
             val matchesQuery = query.isBlank() ||
                     receipt.merchantName.contains(query, ignoreCase = true) ||
                     receipt.category.contains(query, ignoreCase = true)
 
-            // 3. 동적 카테고리 필터 칩
             val matchesChips = if (selectedCats.isEmpty()) true else {
                 selectedCats.contains(receipt.category)
             }
@@ -91,15 +118,55 @@ class ReceiptListViewModel @Inject constructor(
             matchesRange && matchesQuery && matchesChips
         }
 
-        // 💡 [영수증 결제일 최신순 정렬]: 실제 결제 날짜가 최신인 순서대로 완벽 정렬 후 일별 그룹핑
-        val sortedReceipts = filtered.sortedWith(
-            compareByDescending<ReceiptEntity> { it.extractLocalDate() }
-                .thenByDescending { it.createdAt }
-        )
+        // 2단계: 바텀시트 3대 조건 필터링 (결제수단, 증빙유형, 사진유무)
+        val fullyFiltered = baseFiltered.filter { receipt ->
+            val matchesPayment = when (filterOptions.paymentMethod) {
+                "전체" -> true
+                "카드" -> receipt.paymentMethod.contains("카드", ignoreCase = true)
+                "현금" -> receipt.paymentMethod.contains("현금", ignoreCase = true)
+                "간편결제" -> receipt.paymentMethod.contains("간편", ignoreCase = true) || receipt.paymentMethod.contains("페이", ignoreCase = true)
+                else -> receipt.paymentMethod.equals(filterOptions.paymentMethod, ignoreCase = true)
+            }
 
-        // 일별 그룹핑 ("8월 18일 (화)", "8월 17일 (월)" 등 달력 최신순)
-        val grouped = sortedReceipts.groupBy { receipt ->
-            extractDailyGroupHeader(receipt)
+            val matchesProof = if (filterOptions.proofType == "전체") true else {
+                receipt.proofType.equals(filterOptions.proofType, ignoreCase = true)
+            }
+
+            val matchesImage = if (!filterOptions.hasImageOnly) true else {
+                receipt.imagePath.isNotBlank()
+            }
+
+            matchesPayment && matchesProof && matchesImage
+        }
+
+        // 3단계: 정렬 처리
+        val sortedReceipts = when (filterOptions.sortOrder) {
+            SortOrder.DATE_DESC -> fullyFiltered.sortedWith(
+                compareByDescending<ReceiptEntity> { it.extractLocalDate() }
+                    .thenByDescending { it.createdAt }
+            )
+            SortOrder.DATE_ASC -> fullyFiltered.sortedWith(
+                compareBy<ReceiptEntity> { it.extractLocalDate() }
+                    .thenBy { it.createdAt }
+            )
+            SortOrder.AMOUNT_DESC -> fullyFiltered.sortedWith(
+                compareByDescending<ReceiptEntity> { it.totalAmount }
+                    .thenByDescending { it.createdAt }
+            )
+            SortOrder.AMOUNT_ASC -> fullyFiltered.sortedWith(
+                compareBy<ReceiptEntity> { it.totalAmount }
+                    .thenByDescending { it.createdAt }
+            )
+        }
+
+        // 4단계: 일별 그룹핑 vs 플랫 리스트 분기 (금액순일 때는 헤더 없이 플랫하게)
+        val isAmountSorted = filterOptions.sortOrder == SortOrder.AMOUNT_DESC || filterOptions.sortOrder == SortOrder.AMOUNT_ASC
+        val grouped = if (!isAmountSorted) {
+            sortedReceipts.groupBy { receipt ->
+                extractDailyGroupHeader(receipt)
+            }
+        } else {
+            emptyMap()
         }
 
         ReceiptListUiState(
@@ -108,7 +175,11 @@ class ReceiptListViewModel @Inject constructor(
             selectedDateRange = dateRange,
             availableCategories = availableCats,
             selectedCategories = selectedCats,
+            filterOptions = filterOptions,
+            isAmountSorted = isAmountSorted,
+            sortedFlatReceipts = sortedReceipts,
             groupedReceipts = grouped,
+            allReceiptsForFilter = baseFiltered,
             totalCount = sortedReceipts.size,
             totalAmountSum = sortedReceipts.sumOf { it.totalAmount },
             isLoading = false
@@ -152,6 +223,10 @@ class ReceiptListViewModel @Inject constructor(
     fun onDateRangeSelected(start: LocalDate, end: LocalDate) {
         _selectedDateRange.value = Pair(start, end)
         _selectedYearMonth.value = YearMonth.from(start)
+    }
+
+    fun onFilterOptionsChanged(options: ReceiptFilterOptions) {
+        _filterOptions.value = options
     }
 
 
