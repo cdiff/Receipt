@@ -41,9 +41,9 @@ object ReceiptOcrEngine {
             "date"                   to Schema.string(description = "결제 일시 (예: 2026-08-18 15:30 또는 8월 18일 · 오후 3:30)"),
             "totalAmount"            to Schema.double(description = "할인/포인트 적용 후 실제 카드 승인 또는 현금 지불된 최종 실결제 금액 (숫자만)"),
             "businessNumber"         to Schema.string(description = "사업자등록번호 'XXX-XX-XXXXX' 형식 (없으면 빈 문자열)"),
-            "category"               to Schema.string(description = "상호명 및 세부 품목을 종합 판단하여 기존 대분류 목록과 일치하는 항목 1개. 애매하거나 비식품/생필품이면 '미분류'"),
-            "subCategory"            to Schema.string(description = "구체적인 장소, 업종, 품목 소분류 (예: 편의점, 약국, 다이소, 헬스장, 카페, 식당, 택시, 주유소, 병원 등). 모르면 빈 문자열"),
-            "suggestedNewCategory"   to Schema.string(description = "기존 대분류 목록에 맞지 않을 때 추천할 새로운 지출 대분류 1개 (예: 생활비, 의료비, 문화생활, 뷰티, 운동/건강 등). 기존 목록에 맞으면 빈 문자열"),
+            "category"               to Schema.string(description = "기본값은 '미분류'. 실제 구매 품목이 음식/음료이면 '식비', 이동 수단 비용이면 '교통비', 업무용 문구/소모품이면 '사무용품'으로만 변경. 편의점 담배·주류·생활용품은 '미분류'"),
+            "subCategory"            to Schema.string(description = "구체적인 업종/품목 소분류 단어 1개 (예: 편의점, 약국, 카페, 식당, 택시, 주유소, 병원 등)"),
+            "suggestedNewCategory"   to Schema.string(description = "category가 '미분류'인 경우, 식비/교통비/사무용품과 같은 수준의 넓은 대분류 카테고리명 1개 제안 (예: 생활용품, 의료비, 문화생활, 쇼핑, 주거비, 통신비 등). 미분류가 아니면 빈 문자열"),
             "paymentMethod"          to Schema.string(description = "결제 수단 (예: 신용카드, 체크카드, 현금, 간편결제 중 하나)"),
             "proofType"              to Schema.string(description = "증빙 유형 (예: 일반영수증, 현금영수증, 세금계산서 중 하나)"),
             "vatAmount"              to Schema.double(description = "영수증에 적힌 부가가치세 금액 (숫자만. 없으면 0.0)"),
@@ -58,6 +58,7 @@ object ReceiptOcrEngine {
             generationConfig = generationConfig {
                 responseMimeType = "application/json"
                 responseSchema = receiptSchema
+                temperature = 0.0f  // 카테고리 분류 일관성을 위해 결정론적 출력 강제
             }
         )
     }
@@ -91,20 +92,30 @@ object ReceiptOcrEngine {
         return try {
             val catListStr = existingCategories.joinToString(", ")
             val promptText = """
-                영수증 이미지를 분석하여 아래 규칙에 따라 정보를 정확히 추출하세요.
-                현재 등록된 대분류 카테고리 목록: [$catListStr]
+                영수증 이미지를 분석하여 아래 JSON 형식으로 정보를 추출하세요.
+
+                [카테고리 분류 방법 - 가장 중요]
+                등록된 카테고리: [$catListStr]
+
+                분류는 '상호명'이 아닌 반드시 '실제 구매된 품목(Items)'을 기준으로 판단합니다.
+                - 기본값은 항상 "미분류"입니다.
+                - 아래 조건을 100% 만족할 때만 해당 카테고리로 변경합니다:
+                  · 식비로 변경 → 구매 품목 대부분이 "직접 먹거나 마시는 음식/음료"일 때만. 담배·주류·화장품·생활용품·위생용품은 식비 아님.
+                  · 교통비로 변경 → 대중교통 승차권, 주유, 렌터카 등 이동 수단 비용일 때만.
+                  · 사무용품으로 변경 → 업무용 문구, 인쇄, 소모품 구매일 때만.
+                  · 위 조건 중 하나라도 불확실하면 "미분류" 유지.
 
                 규칙:
-                1. merchantName: 영수증 발행 가게 상호명 (예: 스타벅스 강남점, CU 역삼점 등. 없으면 빈 문자열)
-                2. date: 결제 일시 (영수증에 적힌 결제 일시. 연도가 생략된 경우 현재 연도 기준으로 'YYYY-MM-DD HH:mm' 또는 'M월 D일 · a h:mm' 형식으로 정규화)
-                3. totalAmount: 할인, 쿠폰, 포인트 사용 후 실제 카드 승인 또는 현금 지불된 최종 실결제 금액 (주문총액이 아닌 최종 승인금액, 숫자만)
+                1. merchantName: 영수증 발행 가게 상호명 (없으면 빈 문자열)
+                2. date: 결제 일시 ('YYYY-MM-DD HH:mm' 형식으로 정규화, 연도 생략 시 현재 연도 기준)
+                3. totalAmount: 할인/쿠폰/포인트 사용 후 최종 실결제 금액 (숫자만)
                 4. businessNumber: 사업자등록번호 "XXX-XX-XXXXX" (없으면 빈 문자열)
-                5. category: 상호명뿐만 아니라 영수증에 기재된 세부 구매 품목(Items)도 함께 종합적으로 고려하여, 지출 성격이 현재 등록된 대분류 목록 [$catListStr] 중 하나에 명확히 해당하면 그 이름을 선택하고, 기존 대분류에 묶기 애매하거나 없으면 "미분류"를 선택하세요.
-                6. subCategory: 영수증의 구체적인 장소, 업종, 품목 소분류 1개(예: 편의점, 약국, 다이소, 헬스장, 카페, 일반식당, 패스트푸드, 디저트, 택시, 지하철, 버스, 주유소, 문구, 도서, 병원 등)를 단어 하나로 작성하세요.
-                7. suggestedNewCategory: 현재 등록된 대분류 목록 [$catListStr]에 해당하지 않을 때 추천할 지출 대분류 1개(예: 생활비, 의료비, 문화생활, 뷰티, 운동/건강 등)를 작성하세요. 기존 대분류에 이미 잘 맞으면 빈 문자열("")로 두세요.
-                8. paymentMethod: 영수증 문구/카드종류를 분석하여 "신용카드", "체크카드", "현금", "간편결제" 중 하나 선택 (확실치 않으면 "신용카드")
-                9. proofType: "일반영수증", "현금영수증", "세금계산서" 중 하나 선택 (확실치 않으면 "일반영수증")
-                10. vatAmount: 영수증에 표기된 부가세/부가세액 금액 (숫자만. 표기 없으면 0.0)
+                5. category: 위 [카테고리 분류 방법]에 따라 결정. 기본값은 "미분류".
+                6. subCategory: 업종/품목 소분류 단어 1개 (예: 편의점, 카페, 약국, 택시, 마트 등)
+                7. suggestedNewCategory: category가 "미분류"인 경우, 구매 품목의 실제 지출 성격에 맞는 새로운 대분류 카테고리명을 1개 제안하세요. 반드시 식비/교통비/사무용품과 같은 수준의 넓은 대분류여야 합니다 (예: 생활용품, 의료비, 문화생활, 쇼핑, 주거비, 통신비, 외식 등). category가 미분류가 아니고 완벽히 일치하면 빈 문자열("").
+                8. paymentMethod: "신용카드", "체크카드", "현금", "간편결제" 중 하나 (불확실 시 "신용카드")
+                9. proofType: "일반영수증", "현금영수증", "세금계산서" 중 하나 (불확실 시 "일반영수증")
+                10. vatAmount: 영수증에 표기된 부가세 금액 (숫자만, 없으면 0.0)
                 11. confidence: 인식 신뢰도 점수 (0~100 정수)
             """.trimIndent()
 

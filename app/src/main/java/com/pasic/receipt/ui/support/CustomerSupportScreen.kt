@@ -67,9 +67,9 @@ import com.pasic.receipt.ui.theme.TextSecondary
 import com.pasic.receipt.util.ToastEventBus
 import kotlinx.coroutines.delay
 
-private const val KAKAO_OPEN_CHAT_URL = "https://open.kakao.com/o/receipt_help" // 카카오톡 오픈채팅방 링크
-private const val TERMS_OF_SERVICE_URL = "https://github.com/pasic/Receipt" // 서비스 이용약관 웹 링크
-private const val PRIVACY_POLICY_URL = "https://github.com/pasic/Receipt" // 개인정보 처리방침 웹 링크
+private const val KAKAO_OPEN_CHAT_URL = "https://open.kakao.com/o/scpC0uJi" // 카카오톡 오픈채팅방 실링크
+private const val TERMS_OF_SERVICE_URL = "https://cdiff.github.io/Receipt/terms_of_service.html" // 서비스 이용약관 웹 링크
+private const val PRIVACY_POLICY_URL = "https://cdiff.github.io/Receipt/privacy_policy.html" // 개인정보 처리방침 웹 링크
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
