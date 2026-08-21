@@ -30,6 +30,7 @@ data class CategoryItem(
 
 data class ScanUiState(
     val isScanning: Boolean = false,
+    val isManualMode: Boolean = false,
     val scanStep: Int = 1, // 1: 텍스트 스캔 중, 2: 상호명 및 금액 추출 중, 3: 카테고리 자동 분류 중
     val isStepDone: Boolean = false, // 단계 완료 체크 아이콘 팝업 표시 여부
     val isScanFailed: Boolean = false, // 영수증 인식 실패 상태
@@ -86,7 +87,7 @@ class ScanSharedViewModel @Inject constructor(
             try {
                 // 1536px 리사이징
                 val resized = bitmap.resizeForGemini(1536)
-                _uiState.update { it.copy(isScanning = true, isScanFailed = false, scanStep = 1, isStepDone = false, capturedBitmap = resized) }
+                _uiState.update { it.copy(isScanning = true, isManualMode = false, isScanFailed = false, scanStep = 1, isStepDone = false, capturedBitmap = resized) }
 
                 val savedPath = ReceiptImageStorage.saveBitmap(context, resized)
                 delay(700)
@@ -255,6 +256,42 @@ class ScanSharedViewModel @Inject constructor(
         }
     }
 
+    fun startManualInputMode() {
+        scanningJob?.cancel()
+        val now = java.time.LocalDateTime.now()
+        val dateStr = String.format(
+            java.util.Locale.KOREA,
+            "%04d.%02d.%02d %02d:%02d",
+            now.year, now.monthValue, now.dayOfMonth, now.hour, now.minute
+        )
+        _uiState.update {
+            it.copy(
+                isManualMode = true,
+                isScanning = false,
+                isScanFailed = false,
+                capturedBitmap = null,
+                ocrResult = OcrResult(
+                    merchantName = "",
+                    date = dateStr,
+                    totalAmount = 0.0,
+                    category = "식비",
+                    categoryColor = "#FEF3C7",
+                    subCategory = "기타",
+                    paymentMethod = "카드",
+                    proofType = "일반영수증",
+                    confidenceScore = 0,
+                    imagePath = ""
+                )
+            )
+        }
+    }
+
+    fun setManualImagePath(imagePath: String) {
+        _uiState.update { state ->
+            state.copy(ocrResult = state.ocrResult?.copy(imagePath = imagePath))
+        }
+    }
+
     fun saveReceiptToDatabase(
         merchantName: String,
         date: String,
@@ -272,19 +309,23 @@ class ScanSharedViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                val isManual = _uiState.value.isManualMode
+                val finalConfidence = if (isManual) null else confidence
+                val finalSubCategory = if (isManual) (subCategory ?: "기타") else subCategory?.takeIf { it.isNotBlank() }
                 val calculatedVat = vatAmount ?: if (amount > 0.0) Math.round(amount / 11.0).toDouble() else null
+
                 val entity = ReceiptEntity(
                     merchantName = merchantName.ifBlank { "알 수 없는 상호" },
                     date = date,
                     totalAmount = amount,
                     currency = currency,
                     businessNumber = businessNumber,
-                    ocrConfidence = confidence,
+                    ocrConfidence = finalConfidence,
                     category = category,
                     categoryColor = categoryColor,
-                    subCategory = subCategory?.takeIf { it.isNotBlank() },
+                    subCategory = finalSubCategory,
                     imagePath = imagePath,
-                    paymentMethod = paymentMethod.ifBlank { "신용카드" },
+                    paymentMethod = paymentMethod.ifBlank { "카드" },
                     proofType = proofType.ifBlank { "일반영수증" },
                     vatAmount = calculatedVat
                 )

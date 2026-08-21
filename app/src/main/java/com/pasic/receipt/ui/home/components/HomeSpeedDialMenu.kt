@@ -200,11 +200,11 @@ fun HomeSpeedDialMenu(
                     }
                 )
 
-                // 4번: ZIP 파일로 안전하게 보관 (itemIndex = 3, 가장 먼저 튀어나옴)
+                // 4번: ZIP 파일로 보관 (itemIndex = 3, 가장 먼저 튀어나옴)
                 StaggeredSpeedDialRow(
                     visible = visible,
                     itemIndex = 3,
-                    title = "ZIP 파일로 안전하게 보관",
+                    title = "ZIP 파일로 보관",
                     icon = Lucide.Archive,
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)

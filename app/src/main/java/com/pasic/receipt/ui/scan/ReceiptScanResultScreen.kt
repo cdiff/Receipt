@@ -1,6 +1,11 @@
 package com.pasic.receipt.ui.scan
 
+import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -36,7 +42,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -44,10 +52,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.composables.icons.lucide.ArrowLeft
 import com.composables.icons.lucide.Calendar
+import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.RefreshCw
+import com.composables.icons.lucide.X
 import com.pasic.receipt.ui.scan.result.AddCategoryBottomSheet
 import com.pasic.receipt.ui.scan.result.AiCategorySuggestionCard
 import com.pasic.receipt.ui.scan.result.ConfidenceBadge
@@ -60,6 +70,7 @@ import com.pasic.receipt.ui.scan.result.TaxWarningBanner
 import com.pasic.receipt.ui.scan.result.getCategoryBorderColor
 import com.pasic.receipt.ui.scan.result.parseHexColor
 import com.pasic.receipt.ui.theme.ScreenBackground
+import com.pasic.receipt.util.ReceiptImageStorage
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -68,8 +79,29 @@ fun ReceiptScanResultScreen(
     onNavigateBackToScan: () -> Unit,
     onSaveSuccess: () -> Unit
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isManualMode = uiState.isManualMode
     val ocrResult = uiState.ocrResult
+
+    // 갤러리 이미지 선택 런처 (수기 입력 시 영수증 사진 첨부용)
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+                if (bitmap != null) {
+                    val path = ReceiptImageStorage.saveBitmap(context, bitmap)
+                    viewModel.setManualImagePath(path)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     // Editable form states
     var merchantName by remember(ocrResult) { mutableStateOf(ocrResult?.merchantName ?: "") }
@@ -84,15 +116,15 @@ fun ReceiptScanResultScreen(
     // AI Category Suggestion state
     val suggestedCategory = ocrResult?.suggestedNewCategory ?: ""
     var isAiCatSuggestionDismissed by remember(ocrResult) { mutableStateOf(false) }
-    val showAiCategoryCard = suggestedCategory.isNotBlank() &&
+    val showAiCategoryCard = !isManualMode && suggestedCategory.isNotBlank() &&
             uiState.customCategories.none { it.name == suggestedCategory } &&
             !isAiCatSuggestionDismissed
 
     var selectedCategory by remember(ocrResult) {
-        mutableStateOf(if (showAiCategoryCard) "미분류" else (ocrResult?.category ?: "미분류"))
+        mutableStateOf(if (showAiCategoryCard) "미분류" else (ocrResult?.category ?: "식비"))
     }
     var selectedCategoryColor by remember(ocrResult) {
-        mutableStateOf(if (showAiCategoryCard) "#F1F5F9" else (ocrResult?.categoryColor ?: "#F1F5F9"))
+        mutableStateOf(if (showAiCategoryCard) "#F1F5F9" else (ocrResult?.categoryColor ?: "#FEF3C7"))
     }
     var confidenceScore by remember(ocrResult) { mutableStateOf(ocrResult?.confidenceScore ?: 30) }
 
@@ -101,8 +133,6 @@ fun ReceiptScanResultScreen(
     var showAddCategorySheet by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var showDateTimePickerSheet by remember { mutableStateOf(false) }
-
-
 
     val totalAmountDouble = amountString.toDoubleOrNull() ?: 0.0
 
@@ -136,7 +166,7 @@ fun ReceiptScanResultScreen(
                 }
 
                 Text(
-                    text = "스캔 결과 검증",
+                    text = if (isManualMode) "영수증 직접 입력" else "스캔 결과 검증",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E293B)
@@ -147,16 +177,69 @@ fun ReceiptScanResultScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. Top Receipt Preview Card with Lightbox button
-            ReceiptPreviewCard(
-                imagePath = ocrResult?.imagePath ?: "",
-                onZoomClick = { showLightbox = true }
-            )
+            // 1. Top Receipt Preview Card / 사진 첨부 카드
+            val currentImagePath = ocrResult?.imagePath ?: ""
+            if (currentImagePath.isNotBlank()) {
+                ReceiptPreviewCard(
+                    imagePath = currentImagePath,
+                    onZoomClick = { showLightbox = true }
+                )
+            } else if (isManualMode) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFFE2E8F0),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { galleryLauncher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEFF6FF)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Lucide.Camera,
+                                contentDescription = "사진 첨부",
+                                tint = Color(0xFF3B82F6),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "영수증 사진 첨부 (선택)",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E293B)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "갤러리에서 영수증 이미지를 추가할 수 있습니다",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
+                }
+            }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 2. Dynamic Accuracy Confidence Badge
-            ConfidenceBadge(score = confidenceScore)
+            if (!isManualMode) {
+                Spacer(modifier = Modifier.height(20.dp))
+                // 2. Dynamic Accuracy Confidence Badge
+                ConfidenceBadge(score = confidenceScore)
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -197,13 +280,14 @@ fun ReceiptScanResultScreen(
                     }
                 )
 
-                // 일시 (필드 전체 터치 시 휠 피커 바텀시트 오픈)
+                // 일시 (필드 전체 터치 시 휠 피커 바텀시트 오픈 - 직접 타이핑 방지)
                 IosGlassTextField(
                     label = "결제 일시",
                     value = dateString,
                     onValueChange = {
                         dateString = it
                     },
+                    readOnly = true,
                     onClick = { showDateTimePickerSheet = true },
                     trailingIcon = {
                         IconButton(onClick = { showDateTimePickerSheet = true }) {
@@ -229,7 +313,7 @@ fun ReceiptScanResultScreen(
 
                 // 사업자등록번호
                 IosGlassTextField(
-                    label = "사업자등록번호",
+                    label = "사업자등록번호 (선택)",
                     value = businessNumber,
                     onValueChange = {
                         businessNumber = it
@@ -330,13 +414,13 @@ fun ReceiptScanResultScreen(
                         .height(54.dp)
                 ) {
                     Icon(
-                        imageVector = Lucide.RefreshCw,
+                        imageVector = if (isManualMode) Lucide.X else Lucide.RefreshCw,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "다시 촬영",
+                        text = if (isManualMode) "취소" else "다시 촬영",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -346,8 +430,13 @@ fun ReceiptScanResultScreen(
 
                 Button(
                     onClick = {
+                        if (merchantName.trim().isBlank() || totalAmountDouble <= 0.0) {
+                            com.pasic.receipt.util.ToastEventBus.showToast("상호명과 금액을 입력해 주세요.")
+                            return@Button
+                        }
+
                         viewModel.saveReceiptToDatabase(
-                            merchantName = merchantName,
+                            merchantName = merchantName.trim(),
                             date = dateString,
                             amount = totalAmountDouble,
                             currency = currency,
@@ -356,8 +445,8 @@ fun ReceiptScanResultScreen(
                             category = selectedCategory,
                             categoryColor = selectedCategoryColor,
                             imagePath = ocrResult?.imagePath ?: "",
-                            subCategory = ocrResult?.subCategory,
-                            paymentMethod = ocrResult?.paymentMethod ?: "신용카드",
+                            subCategory = if (isManualMode) "기타" else ocrResult?.subCategory,
+                            paymentMethod = ocrResult?.paymentMethod ?: "카드",
                             proofType = ocrResult?.proofType ?: "일반영수증",
                             vatAmount = ocrResult?.vatAmount
                         )

@@ -129,7 +129,7 @@ fun ReceiptTransactionSpecCard(
                 value = "${DecimalFormat("#,###").format(vat.toLong())}원"
             )
 
-            // AI 인식 신뢰도
+            // AI 인식 신뢰도 / 등록 방식
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -141,17 +141,32 @@ fun ReceiptTransactionSpecCard(
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF64748B)
                 )
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFDCFCE7)
-                ) {
-                    Text(
-                        text = "🤖 AI 인식률 ${receipt.ocrConfidence ?: 98}%",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF166534),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                if (receipt.ocrConfidence != null) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFDCFCE7)
+                    ) {
+                        Text(
+                            text = "🤖 AI 스캔 인식 ${receipt.ocrConfidence}%",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF166534),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFEFF6FF)
+                    ) {
+                        Text(
+                            text = "✍️ 수기입력",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E40AF),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
