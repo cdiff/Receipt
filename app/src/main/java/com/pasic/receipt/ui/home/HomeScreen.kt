@@ -160,7 +160,7 @@ fun HomeScreen(
                 receipts = uiState.allReceipts
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
             // 5. 최근 영수증 목록
             RecentReceiptsList(
