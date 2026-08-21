@@ -53,8 +53,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.composables.icons.lucide.*
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ScanLine
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.ui.theme.CategoryThemeRegistry
 import com.pasic.receipt.ui.theme.FabNavy
 import com.pasic.receipt.ui.theme.StatusBadgeBg
 import com.pasic.receipt.ui.theme.StatusBadgeText
@@ -254,17 +256,19 @@ private fun ReceiptItemCard(
                             .border(0.8.dp, Color.Black.copy(alpha = 0.08f), CircleShape)
                     )
                 } else {
+                    val theme = CategoryThemeRegistry.getTheme(receipt.category)
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(30.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF1F5F9)),
+                            .background(Color(0xFFF1F5F9))
+                            .border(0.8.dp, Color(0xFFE2E8F0), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Lucide.Receipt,
-                            contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            imageVector = theme.icon,
+                            contentDescription = receipt.category,
+                            tint = FabNavy, // 남색 통일
                             modifier = Modifier.size(16.dp)
                         )
                     }

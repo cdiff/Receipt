@@ -39,7 +39,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pasic.receipt.ui.components.MainCommonTopBar
 import com.pasic.receipt.ui.settings.components.SectionDividerBand
 import com.pasic.receipt.ui.settings.dialogs.BackupRestoreBottomSheet
-import com.pasic.receipt.ui.settings.dialogs.LicenseDialog
 import com.pasic.receipt.ui.settings.dialogs.OptimizeWarningDialog
 import com.pasic.receipt.ui.settings.dialogs.ThemeSelectionDialog
 import com.pasic.receipt.ui.settings.sections.AiCameraSettingsSection
@@ -61,6 +60,7 @@ fun SettingsScreen(
     onScrollProgressChanged: (Float) -> Unit = {},
     unreadNotificationCount: Int = 0,
     onNotificationClick: () -> Unit = {},
+    onNavigateToSupport: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val userPrefs by viewModel.userPreferences.collectAsState()
@@ -209,7 +209,7 @@ fun SettingsScreen(
             GeneralSettingsSection(
                 currentTheme = userPrefs.appTheme,
                 onThemeClick = { viewModel.setShowThemeDialog(true) },
-                onLicenseClick = { viewModel.setShowLicenseDialog(true) }
+                onSupportClick = onNavigateToSupport
             )
         }
 
@@ -251,12 +251,6 @@ fun SettingsScreen(
                     viewModel.executeImageOptimization(context)
                     viewModel.setShowOptimizeWarningDialog(false)
                 }
-            )
-        }
-
-        if (uiState.showLicenseDialog) {
-            LicenseDialog(
-                onDismiss = { viewModel.setShowLicenseDialog(false) }
             )
         }
     }

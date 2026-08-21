@@ -48,8 +48,7 @@ data class SettingsUiState(
     val showThemeDialog: Boolean = false,
     val showCsvOptionsSheet: Boolean = false,
     val showOptimizeWarningDialog: Boolean = false,
-    val showBackupRestoreDialog: Boolean = false,
-    val showLicenseDialog: Boolean = false
+    val showBackupRestoreDialog: Boolean = false
 )
 
 @HiltViewModel
@@ -181,7 +180,6 @@ class SettingsViewModel @Inject constructor(
     fun setShowCsvOptionsSheet(show: Boolean) = _uiState.update { it.copy(showCsvOptionsSheet = show) }
     fun setShowOptimizeWarningDialog(show: Boolean) = _uiState.update { it.copy(showOptimizeWarningDialog = show) }
     fun setShowBackupRestoreDialog(show: Boolean) = _uiState.update { it.copy(showBackupRestoreDialog = show) }
-    fun setShowLicenseDialog(show: Boolean) = _uiState.update { it.copy(showLicenseDialog = show) }
     fun clearToastMessage() = _uiState.update { it.copy(toastMessage = null) }
 
     // ── 데이터 백업 & 복원 (.zip) ──────────────────────────────────

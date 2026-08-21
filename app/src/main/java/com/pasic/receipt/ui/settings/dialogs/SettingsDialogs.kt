@@ -191,29 +191,3 @@ internal fun OptimizeWarningDialog(
         dismissButton = {}
     )
 }
-
-@Composable
-internal fun LicenseDialog(
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("고객 센터 및 오픈소스 라이선스", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-        text = {
-            Text(
-                "Receipt Manager v1.0.0\n\n" +
-                    "• Hilt, Room, Jetpack Compose, DataStore (Apache 2.0)\n" +
-                    "• Lucide Icons, Haze Backdrop Blur (MIT License)\n" +
-                    "• ML Kit Korean OCR, Firebase (Google SDK)\n\n" +
-                    "문의사항: support@pasic.com",
-                fontSize = 12.sp,
-                color = TextSecondary
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("확인", color = FabNavy, fontWeight = FontWeight.Bold)
-            }
-        }
-    )
-}
