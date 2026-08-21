@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개인정보 처리방침 - 영수증 쏙 (Receipt)</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --accent-bg: #eff6ff;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.7;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+    .header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--accent-bg);
+      color: var(--primary);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .date-info {
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+    .highlight-card {
+      background: var(--accent-bg);
+      border: 1px solid #bfdbfe;
+      padding: 20px 24px;
+      border-radius: 16px;
+      margin-bottom: 32px;
+    }
+    .highlight-card p {
+      color: #1e40af;
+      font-weight: 600;
+      font-size: 15px;
+      margin: 0;
+    }
+    h2 {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 36px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    p, li {
+      color: var(--text-sub);
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 16px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    strong {
+      color: var(--text-main);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+    .contact-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-top: 16px;
+    }
+    .contact-box a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .contact-box a:hover {
+      text-decoration: underline;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    @media (max-width: 640px) {
+      body {
+        padding: 20px 12px;
+      }
+      .container {
+        padding: 24px 20px;
+        border-radius: 18px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="badge">영수증 쏙 (Receipt)</span>
+      <h1>개인정보 처리방침</h1>
+      <p class="date-info">시행일자: 2026년 8월 22일</p>
+    </div>
+
+    <div class="highlight-card">
+      <p>💡 영수증 쏙은 사용자의 개인정보를 서버에 일체 수집 및 저장하지 않으며, 모든 영수증 데이터는 사용자의 스마트폰 기기 내부에만 안전하게 100% 온디바이스로 보관됩니다.</p>
+    </div>
+
+    <h2>1. 개인정보의 처리 목적 및 수집 항목</h2>
+    <p>'영수증 쏙'은 별도의 회원가입, 계정 생성, 로그인 과정이 없는 <strong>완전한 오프라인 온디바이스(On-Device) 로컬 가계부 및 영수증 관리 앱</strong>입니다. 운영자는 사용자의 주민등록번호, 계정 비밀번호, 금융 계좌번호 등의 민감한 개인 식별 정보를 일체 수집하거나 서버로 전송하지 않습니다.</p>
+    <ul>
+      <li><strong>수집 및 기기 내 로컬 저장 항목:</strong> 영수증 사진 이미지, 상호명, 결제 일시, 결제 금액, 사업자등록번호, 결제 수단, 품목명, 카테고리 정보</li>
+      <li><strong>저장 장소:</strong> 사용자 스마트폰 내부 SQLite Room Database (기기 외부 유출 없음)</li>
+    </ul>
+
+    <h2>2. 외부 AI 서비스(Google Gemini API) 데이터 처리에 관한 고지</h2>
+    <p>'영수증 쏙'은 영수증의 텍스트 및 항목을 자동으로 인식하기 위해 <strong>Google Gemini Generative AI API</strong>를 활용합니다. 이에 따른 데이터 처리 기준은 다음과 같습니다:</p>
+    <ul>
+      <li><strong>전송 데이터:</strong> 사용자가 스캔(촬영 또는 갤러리 선택)한 영수증 이미지</li>
+      <li><strong>처리 목적:</strong> 영수증 내 상호명, 결제금액, 일자 등의 텍스트 추출(OCR) 및 카테고리 자동 분류</li>
+      <li><strong>보관 및 파기:</strong> 텍스트 추출 처리는 암호화된 통신(HTTPS)을 통해 실시간으로 처리되며, 분석이 완료되는 즉시 Google 서버 메모리에서 완전히 휘발 및 파기됩니다.</li>
+      <li><strong>AI 모델 학습 미사용:</strong> 전송된 영수증 데이터는 Google의 AI 모델 학습 목적으로 영구 저장되거나 재사용되지 않습니다.</li>
+    </ul>
+
+    <h2>3. 앱 접근 권한(Permissions) 안내</h2>
+    <p>'영수증 쏙'은 원활한 서비스 제공을 위해 아래와 같은 기기 권한을 필요 시에만 요청하며, 권한을 거부하더라도 해당 기능을 제외한 기본 서비스는 정상 이용하실 수 있습니다.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>권한 항목</th>
+          <th>필수/선택</th>
+          <th>이용 목적</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>카메라 (CAMERA)</strong></td>
+          <td>선택</td>
+          <td>영수증 실물 사진 촬영 및 스마트 스캔</td>
+        </tr>
+        <tr>
+          <td><strong>사진/저장소 (READ_MEDIA_IMAGES)</strong></td>
+          <td>선택</td>
+          <td>갤러리 영수증 불러오기 및 지출결의서(PDF/CSV/ZIP) 파일 저장</td>
+        </tr>
+        <tr>
+          <td><strong>알림 (POST_NOTIFICATIONS)</strong></td>
+          <td>선택</td>
+          <td>지출 리마인더 및 중요 앱 업데이트 공지 수신</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. 개인정보의 보유 및 파기 절차</h2>
+    <p>모든 영수증 및 소비 내역 데이터는 사용자의 기기 내부에만 저장되므로, 사용자가 앱 내에서 특정 영수증을 삭제하거나 스마트폰에서 <strong>앱을 삭제(Uninstall)하는 즉시 모든 데이터가 기기에서 영구적으로 완전 파기</strong>됩니다.</p>
+
+    <h2>5. 개인정보의 제3자 제공 및 위탁</h2>
+    <p>'영수증 쏙'은 사용자의 사전 동의 없이 개인정보를 제3자에게 제공하거나 판매하지 않습니다. 단, AI OCR 기능 수행을 위한 Google API 연동은 위 2항의 목적에 한하여 일시적으로 처리됩니다.</p>
+
+    <h2>6. 이용자의 권리 및 행사 방법</h2>
+    <p>사용자는 언제든지 앱 내에서 본인의 영수증 데이터를 직접 열람, 수정, 삭제할 수 있으며, 설정 메뉴의 <strong>[데이터 백업/복원]</strong> 기능을 통해 본인의 전체 데이터를 ZIP 파일 형태로 직접 내보내거나 기기 간 이전할 수 있습니다.</p>
+
+    <h2>7. 개인정보 보호책임자 및 문의처</h2>
+    <p>서비스 이용 중 발생하는 개인정보 보호 관련 문의사항이나 피드백은 아래의 담당자에게 문의해 주시면 신속하고 친절하게 답변드리겠습니다.</p>
+    
+    <div class="contact-box">
+      <p><strong>개발 및 운영자:</strong> PASIC</p>
+      <p><strong>이메일:</strong> <a href="mailto:pasic1@naver.com">pasic1@naver.com</a></p>
+      <p><strong>전화번호:</strong> 010-2994-9272</p>
+      <p><strong>오픈채팅 고객센터:</strong> <a href="https://open.kakao.com/o/scpC0uJi" target="_blank" rel="noopener noreferrer">https://open.kakao.com/o/scpC0uJi</a></p>
+    </div>
+
+    <h2>8. 개인정보 처리방침의 변경</h2>
+    <p>본 방침은 법령 또는 서비스 정책의 변경에 따라 내용이 수정될 수 있으며, 개정 시 앱 내 공지사항 및 본 웹페이지를 통해 개정 일자와 함께 사전 공지합니다.</p>
+
+    <div class="footer">
+      <p>© 2026 영수증 쏙 (Receipt). All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

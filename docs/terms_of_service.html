@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>서비스 이용약관 - 영수증 쏙 (Receipt)</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --accent-bg: #eff6ff;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.7;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+    .header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--accent-bg);
+      color: var(--primary);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .date-info {
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+    h2 {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 36px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    p, li {
+      color: var(--text-sub);
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 16px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    strong {
+      color: var(--text-main);
+    }
+    .notice-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+    .notice-box p {
+      color: #92400e;
+      font-size: 14px;
+      margin: 0;
+    }
+    .contact-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-top: 16px;
+    }
+    .contact-box a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .contact-box a:hover {
+      text-decoration: underline;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    @media (max-width: 640px) {
+      body {
+        padding: 20px 12px;
+      }
+      .container {
+        padding: 24px 20px;
+        border-radius: 18px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="badge">영수증 쏙 (Receipt)</span>
+      <h1>서비스 이용약관</h1>
+      <p class="date-info">시행일자: 2026년 8월 22일</p>
+    </div>
+
+    <h2>제1조 (목적)</h2>
+    <p>본 약관은 '영수증 쏙'(이하 "앱" 또는 "서비스")의 이용과 관련하여 운영자와 이용자(이하 "사용자") 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
+
+    <h2>제2조 (서비스의 내용)</h2>
+    <p>운영자가 제공하는 서비스의 주요 내용은 다음과 같습니다:</p>
+    <ol>
+      <li>영수증 촬영 및 이미지 업로드를 통한 AI 텍스트 자동 인식(OCR) 및 카테고리 자동 분류</li>
+      <li>온디바이스 SQLite 데이터베이스 기반의 영수증 내역 저장 및 관리</li>
+      <li>월별, 주별, 일별 및 카테고리별 소비 지출 통계 차트 시각화</li>
+      <li>지출결의서 및 영수증 증빙용 PDF 문서, CSV 파일, 원본 사진 ZIP 압축 내보내기</li>
+      <li>전체 영수증 데이터의 로컬 백업 및 복원 기능</li>
+    </ol>
+
+    <h2>제3조 (AI 인식 결과에 관한 면책 및 사용자 확인 의무)</h2>
+    <div class="notice-box">
+      <p>⚠️ <strong>중요 고지:</strong> 영수증 쏙의 AI OCR 기능은 인공지능 모델을 활용하여 작동하며, 영수증 원본의 인쇄 상태, 구겨짐, 조명, 각도 등에 따라 인식 결과에 오차가 발생할 수 있습니다.</p>
+    </div>
+    <ul>
+      <li>사용자는 AI 스캔 후 저장하기 전에 상호명, 결제금액, 일자, 부가세 등의 정보가 정확한지 <strong>직접 검토하고 수정할 책임</strong>이 있습니다.</li>
+      <li>운영자는 AI 인식 오류로 인하여 발생한 세무, 회계, 법적 정산상의 손해나 분쟁에 대해 책임을 지지 않습니다.</li>
+    </ul>
+
+    <h2>제4조 (데이터의 보관 및 백업 책임)</h2>
+    <p>'영수증 쏙'은 사용자의 개인정보와 금융 데이터를 보호하기 위해 중앙 클라우드 서버에 데이터를 저장하지 않고 <strong>100% 사용자의 스마트폰 내부 저장소에만 데이터를 보관</strong>합니다.</p>
+    <ul>
+      <li>기기 분실, 파손, 운영체제 초기화, 앱 삭제 등으로 인한 데이터 유실을 방지하기 위해 사용자는 앱 내 <strong>[설정] > [데이터 백업]</strong> 기능을 이용하여 정기적으로 백업 파일을 보관할 것을 권장합니다.</li>
+      <li>사용자의 부주의(정기 백업 미실시, 기기 교체 전 백업 미수행 등)로 인해 발생한 데이터 유실에 대해 운영자는 복구 의무를 부담하지 않습니다.</li>
+    </ul>
+
+    <h2>제5조 (저작권 및 권리의 귀속)</h2>
+    <ul>
+      <li>'영수증 쏙' 서비스의 소프트웨어, UI 디자인, 아이콘, 상표 등에 대한 저작권 및 지식재산권은 운영자에게 귀속됩니다.</li>
+      <li>사용자가 앱 내에 등록한 영수증 사진 및 데이터의 소유권은 전적으로 사용자 본인에게 있습니다.</li>
+    </ul>
+
+    <h2>제6조 (서비스의 변경 및 중단)</h2>
+    <p>운영자는 원활한 서비스 제공을 위해 앱의 기능 추가, 수정, 성능 개선을 지속적으로 수행할 수 있으며, 불가피한 기술적 필요가 있는 경우 사전 공지 후 서비스의 일부 또는 전부를 수정하거나 중단할 수 있습니다.</p>
+
+    <h2>제7조 (면책 조항)</h2>
+    <ul>
+      <li>운영자는 천재지변, OS 업데이트로 인한 기기 호환성 문제, 기타 불가항력적인 사유로 서비스를 제공할 수 없는 경우 이에 대한 책임을 면합니다.</li>
+      <li>사용자가 서비스를 이용하여 생성한 PDF 지출결의서 및 CSV 파일을 제3자(회사, 국세청, 거래처 등)에 제출하여 발생하는 제반 법적 분쟁에 대해 운영자는 책임을 지지 않습니다.</li>
+    </ul>
+
+    <h2>제8조 (문의처)</h2>
+    <p>서비스 이용과 관련된 불편사항이나 건의사항은 아래의 고객센터 채널을 통해 문의하실 수 있습니다.</p>
+    
+    <div class="contact-box">
+      <p><strong>운영자:</strong> PASIC</p>
+      <p><strong>이메일:</strong> <a href="mailto:pasic1@naver.com">pasic1@naver.com</a></p>
+      <p><strong>전화번호:</strong> 010-2994-9272</p>
+      <p><strong>카카오톡 오픈채팅:</strong> <a href="https://open.kakao.com/o/scpC0uJi" target="_blank" rel="noopener noreferrer">https://open.kakao.com/o/scpC0uJi</a></p>
+    </div>
+
+    <h2>제9조 (준거법 및 재판관할)</h2>
+    <p>본 약관의 해석 및 운영자와 사용자 간의 분쟁에 관하여는 대한민국 법률을 적용하며, 분쟁 발생 시 대한민국 법원을 관할 법원으로 합니다.</p>
+
+    <div class="footer">
+      <p>© 2026 영수증 쏙 (Receipt). All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
