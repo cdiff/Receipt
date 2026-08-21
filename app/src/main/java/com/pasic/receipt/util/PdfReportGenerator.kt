@@ -119,7 +119,7 @@ object PdfReportGenerator {
         purpose: String
     ): File = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "exports").apply { mkdirs() }
-        val pdfFile = File(dir, "expense_report_$periodLabel.pdf")
+        val pdfFile = File(dir, "${periodLabel}_지출결의서.pdf")
 
         val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
         val today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일"))

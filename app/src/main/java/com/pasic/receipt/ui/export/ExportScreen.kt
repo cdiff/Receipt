@@ -354,16 +354,21 @@ fun ExportScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             // ── 섹션 4. 보고서 생성 및 다운로드 버튼 ─────────────────────
+            val isZeroCount = uiState.targetReceiptCount == 0
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(FabNavy)
+                    .background(if (isZeroCount) Color(0xFF94A3B8) else FabNavy)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {
+                        if (isZeroCount) {
+                            com.pasic.receipt.util.ToastEventBus.showToast("내보낼 영수증 내역이 없습니다.")
+                            return@clickable
+                        }
                         if (uiState.selectedFormat == ExportFormat.PDF) {
                             viewModel.onGenerateClicked()
                         } else {

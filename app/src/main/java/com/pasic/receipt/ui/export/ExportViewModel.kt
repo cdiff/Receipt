@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,6 +132,10 @@ class ExportViewModel @Inject constructor(
     fun toggleIncludeImages(v: Boolean) = _uiState.update { it.copy(includeImages = v) }
 
     fun onGenerateClicked() {
+        if (_uiState.value.targetReceiptCount == 0) {
+            com.pasic.receipt.util.ToastEventBus.showToast("내보낼 영수증 내역이 없습니다.")
+            return
+        }
         if (_uiState.value.selectedFormat == ExportFormat.PDF) {
             _uiState.update {
                 it.copy(
@@ -142,6 +147,10 @@ class ExportViewModel @Inject constructor(
     }
 
     fun onEmailShareClicked(context: Context) {
+        if (_uiState.value.targetReceiptCount == 0) {
+            com.pasic.receipt.util.ToastEventBus.showToast("내보낼 영수증 내역이 없습니다.")
+            return
+        }
         if (_uiState.value.selectedFormat == ExportFormat.PDF) {
             _uiState.update {
                 it.copy(
@@ -155,6 +164,10 @@ class ExportViewModel @Inject constructor(
     }
 
     fun onMessengerShareClicked(context: Context) {
+        if (_uiState.value.targetReceiptCount == 0) {
+            com.pasic.receipt.util.ToastEventBus.showToast("내보낼 영수증 내역이 없습니다.")
+            return
+        }
         if (_uiState.value.selectedFormat == ExportFormat.PDF) {
             _uiState.update {
                 it.copy(
@@ -228,16 +241,22 @@ class ExportViewModel @Inject constructor(
             try {
                 val (startMs, endMs) = getDateRangeMs()
                 val receipts = withContext(Dispatchers.IO) { getSortedReceipts(startMs, endMs) }
+
+                if (receipts.isEmpty()) {
+                    com.pasic.receipt.util.ToastEventBus.showToast("내보낼 영수증 내역이 없습니다.")
+                    return@launch
+                }
+
                 val includeImages = _uiState.value.includeImages
                 val periodLabel = getPeriodLabel()
 
                 val (fileName, mimeType, fileBytes) = withContext(Dispatchers.IO) {
                     if (includeImages) {
-                        val zipName = "receipts_$periodLabel.zip"
+                        val zipName = "${periodLabel}_영수증_증빙.zip"
                         val csvContent = buildCsvString(receipts, includeImageColumn = true)
                         val baos = ByteArrayOutputStream()
                         ZipOutputStream(baos).use { zos ->
-                            val csvEntry = ZipEntry("receipts_$periodLabel.csv")
+                            val csvEntry = ZipEntry("${periodLabel}_지출내역장부.csv")
                             zos.putNextEntry(csvEntry)
                             zos.write(csvContent.toByteArray(Charsets.UTF_8))
                             zos.closeEntry()
@@ -247,7 +266,8 @@ class ExportViewModel @Inject constructor(
                                     val imageFile = File(r.imagePath)
                                     if (imageFile.exists() && imageFile.length() > 0) {
                                         val ext = imageFile.extension.ifBlank { "jpg" }
-                                        val entryName = "images/receipt_${index + 1}_${r.date.replace(".", "")}.$ext"
+                                        val cleanDate = r.date.replace(Regex("[^0-9]"), "")
+                                        val entryName = "images/receipt_${r.id}_${index + 1}_${cleanDate}.$ext"
                                         zos.putNextEntry(ZipEntry(entryName))
                                         imageFile.inputStream().use { input -> input.copyTo(zos) }
                                         zos.closeEntry()
@@ -257,7 +277,7 @@ class ExportViewModel @Inject constructor(
                         }
                         Triple(zipName, "application/zip", baos.toByteArray())
                     } else {
-                        val csvName = "receipts_$periodLabel.csv"
+                        val csvName = "${periodLabel}_지출보고서.csv"
                         val csvContent = buildCsvString(receipts, includeImageColumn = false)
                         Triple(csvName, "text/csv", csvContent.toByteArray(Charsets.UTF_8))
                     }
@@ -268,7 +288,7 @@ class ExportViewModel @Inject constructor(
                 val dir = File(context.filesDir, "exports").apply { mkdirs() }
                 val localFile = File(dir, fileName).apply { writeBytes(fileBytes) }
 
-                // 알림 센터에 실제 내보내기 이력 로그 실시간 누적
+                // 알림 센터에 실제 내보내기 이력 로그 실시간 누적 (포맷 표준화: CSV / ZIP)
                 notificationRepository.addExportLog(
                     fileName = fileName,
                     receiptCount = receipts.size,
@@ -308,6 +328,12 @@ class ExportViewModel @Inject constructor(
                 val receipts = withContext(Dispatchers.IO) {
                     getSortedReceipts(startMs, endMs)
                 }
+
+                if (receipts.isEmpty()) {
+                    com.pasic.receipt.util.ToastEventBus.showToast("내보낼 영수증 내역이 없습니다.")
+                    return@launch
+                }
+
                 val periodLabel = getPeriodLabel()
 
                 val pdfFile = PdfReportGenerator.generate(
@@ -510,7 +536,7 @@ class ExportViewModel @Inject constructor(
                 val baos = ByteArrayOutputStream()
                 ZipOutputStream(baos).use { zos ->
                     val csvContent = buildCsvString(receipts, includeImageColumn = true)
-                    zos.putNextEntry(ZipEntry("receipts_$periodLabel.csv"))
+                    zos.putNextEntry(ZipEntry("${periodLabel}_지출내역장부.csv"))
                     zos.write(csvContent.toByteArray(Charsets.UTF_8))
                     zos.closeEntry()
 
@@ -519,7 +545,8 @@ class ExportViewModel @Inject constructor(
                             val imgFile = File(imgPath)
                             if (imgFile.exists()) {
                                 val ext = imgFile.extension.ifEmpty { "jpg" }
-                                val entryName = "images/receipt_${index + 1}_${receipt.date.replace("-", "")}.$ext"
+                                val cleanDate = receipt.date.replace(Regex("[^0-9]"), "")
+                                val entryName = "images/receipt_${receipt.id}_${index + 1}_${cleanDate}.$ext"
                                 zos.putNextEntry(ZipEntry(entryName))
                                 imgFile.inputStream().use { it.copyTo(zos) }
                                 zos.closeEntry()
@@ -527,12 +554,12 @@ class ExportViewModel @Inject constructor(
                         }
                     }
                 }
-                File(dir, "receipts_$periodLabel.zip").also { it.writeBytes(baos.toByteArray()) }
+                File(dir, "${periodLabel}_영수증_증빙.zip").also { it.writeBytes(baos.toByteArray()) }
             }
             Pair(zipFile, "application/zip")
         } else {
             val csvFile = withContext(Dispatchers.IO) {
-                File(dir, "receipts_$periodLabel.csv").also {
+                File(dir, "${periodLabel}_지출보고서.csv").also {
                     it.writeText(buildCsvString(receipts, includeImageColumn = false), Charsets.UTF_8)
                 }
             }
@@ -573,12 +600,13 @@ class ExportViewModel @Inject constructor(
 
     private fun getPeriodLabel(): String {
         val state = _uiState.value
-        return if (state.customStartMs != null) {
-            val date = LocalDate.ofEpochDay(state.customStartMs / 86400000)
-            "${date.year}_${date.monthValue.toString().padStart(2, '0')}"
+        return if (state.customStartMs != null && state.customEndMs != null) {
+            val startDate = LocalDate.ofEpochDay(state.customStartMs / 86400000)
+            val endDate = LocalDate.ofEpochDay(state.customEndMs / 86400000)
+            "${startDate.year}년_${startDate.monthValue}월_${startDate.dayOfMonth}일~${endDate.year}년_${endDate.monthValue}월_${endDate.dayOfMonth}일"
         } else {
             val now = YearMonth.now()
-            "${now.year}_${now.monthValue.toString().padStart(2, '0')}"
+            "${now.year}년_${now.monthValue}월"
         }
     }
 
@@ -660,6 +688,163 @@ class ExportViewModel @Inject constructor(
             "RAW_NUMBER" -> longVal.toString()
             "CURRENCY_TEXT" -> String.format(Locale.KOREA, "%,d원", longVal)
             else -> String.format(Locale.KOREA, "%,d", longVal)
+        }
+    }
+
+    // ── 홈 화면 [더보기] 퀵 액션 전용 메서드들 ───────────────────────
+
+    fun exportMonthlyCsvQuick(context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGenerating = true) }
+            try {
+                val today = LocalDate.now()
+                val start = today.withDayOfMonth(1)
+                val startMs = start.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val endMs = today.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+                val receipts = withContext(Dispatchers.IO) {
+                    getSortedReceipts(startMs, endMs)
+                }
+
+                if (receipts.isEmpty()) {
+                    com.pasic.receipt.util.ToastEventBus.showToast("이번 달 등록된 영수증이 없습니다.")
+                    return@launch
+                }
+
+                val now = YearMonth.now()
+                val fileName = "${now.year}년_${now.monthValue}월_지출보고서.csv"
+                val csvContent = buildCsvString(receipts, includeImageColumn = false)
+                val bytes = csvContent.toByteArray(Charsets.UTF_8)
+
+                saveToDownloads(context, fileName, "text/csv", bytes)
+
+                // 임시 파일 생성 (공유 다이얼로그용)
+                val dir = File(context.filesDir, "exports").apply { mkdirs() }
+                val tempFile = File(dir, fileName).also { it.writeBytes(bytes) }
+
+                notificationRepository.addExportLog(
+                    fileName = fileName,
+                    receiptCount = receipts.size,
+                    format = "CSV",
+                    filePath = tempFile.absolutePath
+                )
+
+                _uiState.update {
+                    it.copy(
+                        showSaveSuccessDialog = true,
+                        savedFileName = fileName,
+                        previewPdfFile = tempFile
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "CSV 저장 중 오류가 발생했습니다: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isGenerating = false) }
+            }
+        }
+    }
+
+    fun exportMonthlyPdfQuick(context: Context, author: String, dept: String, purpose: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGenerating = true) }
+            try {
+                val today = LocalDate.now()
+                val start = today.withDayOfMonth(1)
+                val startMs = start.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val endMs = today.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+                val receipts = withContext(Dispatchers.IO) {
+                    getSortedReceipts(startMs, endMs)
+                }
+
+                if (receipts.isEmpty()) {
+                    com.pasic.receipt.util.ToastEventBus.showToast("이번 달 등록된 영수증이 없습니다.")
+                    return@launch
+                }
+
+                val now = YearMonth.now()
+                val periodLabel = "${now.year}년 ${now.monthValue}월"
+                val pdfFile = PdfReportGenerator.generate(
+                    context, receipts, periodLabel, author, dept, purpose
+                )
+
+                _uiState.update {
+                    it.copy(
+                        showPdfPreviewDialog = true,
+                        previewPdfFile = pdfFile
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "PDF 생성 중 오류가 발생했습니다: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isGenerating = false) }
+            }
+        }
+    }
+
+    fun exportAllReceiptsZipQuick(context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGenerating = true) }
+            try {
+                val receipts = withContext(Dispatchers.IO) {
+                    repository.getAllReceipts().first()
+                }
+
+                if (receipts.isEmpty()) {
+                    com.pasic.receipt.util.ToastEventBus.showToast("보관할 영수증 내역이 없습니다.")
+                    return@launch
+                }
+
+                val fileName = "전체_영수증_증빙_보관.zip"
+                val dir = File(context.filesDir, "exports").apply { mkdirs() }
+
+                val zipFile = withContext(Dispatchers.IO) {
+                    val baos = ByteArrayOutputStream()
+                    ZipOutputStream(baos).use { zos ->
+                        val csvContent = buildCsvString(receipts, includeImageColumn = true)
+                        zos.putNextEntry(ZipEntry("전체_영수증_내역장부.csv"))
+                        zos.write(csvContent.toByteArray(Charsets.UTF_8))
+                        zos.closeEntry()
+
+                        receipts.forEachIndexed { index, receipt ->
+                            receipt.imagePath.takeIf { it.isNotBlank() }?.let { imgPath ->
+                                val imgFile = File(imgPath)
+                                if (imgFile.exists()) {
+                                    val ext = imgFile.extension.ifEmpty { "jpg" }
+                                    val cleanDate = receipt.date.replace(Regex("[^0-9]"), "")
+                                    val entryName = "images/receipt_${receipt.id}_${index + 1}_${cleanDate}.$ext"
+                                    zos.putNextEntry(ZipEntry(entryName))
+                                    imgFile.inputStream().use { it.copyTo(zos) }
+                                    zos.closeEntry()
+                                }
+                            }
+                        }
+                    }
+                    File(dir, fileName).also { it.writeBytes(baos.toByteArray()) }
+                }
+
+                val bytes = zipFile.readBytes()
+                saveToDownloads(context, fileName, "application/zip", bytes)
+
+                notificationRepository.addExportLog(
+                    fileName = fileName,
+                    receiptCount = receipts.size,
+                    format = "ZIP",
+                    filePath = zipFile.absolutePath
+                )
+
+                _uiState.update {
+                    it.copy(
+                        showSaveSuccessDialog = true,
+                        savedFileName = fileName,
+                        previewPdfFile = zipFile
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "ZIP 보관 파일 생성 중 오류가 발생했습니다: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isGenerating = false) }
+            }
         }
     }
 }
