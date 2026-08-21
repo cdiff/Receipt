@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -73,8 +74,15 @@ class ReceiptListViewModel @Inject constructor(
     private val _filterOptions = MutableStateFlow(ReceiptFilterOptions())
     val filterOptions: StateFlow<ReceiptFilterOptions> = _filterOptions
 
+    init {
+        viewModelScope.launch {
+            repository.ensureDefaultCategories()
+        }
+    }
+
     val uiState: StateFlow<ReceiptListUiState> = combine(
         repository.getAllReceipts(),
+        repository.getAllCategories(),
         _searchQuery,
         _selectedCategories,
         _selectedYearMonth,
@@ -83,18 +91,20 @@ class ReceiptListViewModel @Inject constructor(
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val rawReceipts = flows[0] as List<ReceiptEntity>
-        val query = flows[1] as String
         @Suppress("UNCHECKED_CAST")
-        val selectedCats = flows[2] as Set<String>
-        val yearMonth = flows[3] as YearMonth?
+        val categoryEntities = flows[1] as List<com.pasic.receipt.data.local.entity.CategoryEntity>
+        val query = flows[2] as String
         @Suppress("UNCHECKED_CAST")
-        val dateRange = flows[4] as Pair<LocalDate, LocalDate>?
-        val filterOptions = flows[5] as ReceiptFilterOptions
+        val selectedCats = flows[3] as Set<String>
+        val yearMonth = flows[4] as YearMonth?
+        @Suppress("UNCHECKED_CAST")
+        val dateRange = flows[5] as Pair<LocalDate, LocalDate>?
+        val filterOptions = flows[6] as ReceiptFilterOptions
 
-        // 로컬 DB 영수증에 등록된 커스텀 카테고리까지 100% 동적 추출
-        val defaultCats = listOf("식비", "교통비", "사무용품", "미분류")
-        val dbCats = rawReceipts.map { it.category }.filter { it.isNotBlank() }
-        val availableCats = (defaultCats + dbCats).distinct()
+        // 100% 순수 DB categories 테이블에서 동적 추출 (미분류는 항상 맨 끝에 배치)
+        val allDbCatNames = categoryEntities.map { it.name }.filter { it.isNotBlank() }
+        val distinctGeneralCats = allDbCatNames.distinct().filter { it != "미분류" }
+        val availableCats = distinctGeneralCats + if (allDbCatNames.contains("미분류")) listOf("미분류") else emptyList()
 
         // 1단계: 날짜 범위 / 월 필터 + 검색어 + 상단 카테고리 칩
         val baseFiltered = rawReceipts.filter { receipt ->

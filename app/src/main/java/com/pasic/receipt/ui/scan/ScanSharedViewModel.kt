@@ -9,6 +9,7 @@ import com.pasic.receipt.ai.OcrResult
 import com.pasic.receipt.ai.ReceiptOcrEngine
 import com.pasic.receipt.data.local.entity.ReceiptEntity
 import com.pasic.receipt.data.repository.ReceiptRepository
+import com.pasic.receipt.ui.theme.CategoryThemeRegistry
 import com.pasic.receipt.util.ReceiptImageStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -36,12 +38,7 @@ data class ScanUiState(
     val isScanFailed: Boolean = false, // 영수증 인식 실패 상태
     val capturedBitmap: Bitmap? = null, // 분석 중인 캡처 정지 화면 이미지
     val ocrResult: OcrResult? = null,
-    val customCategories: List<CategoryItem> = listOf(
-        CategoryItem("식비", "#FEF3C7"),
-        CategoryItem("교통비", "#DBEAFE"),
-        CategoryItem("사무용품", "#F3E8FF"),
-        CategoryItem("미분류", "#F1F5F9")
-    ),
+    val customCategories: List<CategoryItem> = emptyList(),
     val isSaveSuccess: Boolean = false,
     val errorMessage: String? = null
 )
@@ -58,6 +55,20 @@ class ScanSharedViewModel @Inject constructor(
     val saveSuccessEvent: SharedFlow<Unit> = _saveSuccessEvent.asSharedFlow()
 
     private var scanningJob: Job? = null
+
+    init {
+        // categories DB를 실시간 관찰하여 customCategories 자동 동기화
+        viewModelScope.launch {
+            repository.getAllCategories().collectLatest { entities ->
+                val items = entities.map { entity ->
+                    val theme = CategoryThemeRegistry.getTheme(entity.name)
+                    val hex = "#%06X".format(theme.tagBgColor.value.toLong().and(0xFFFFFF))
+                    CategoryItem(name = entity.name, colorHex = hex)
+                }
+                _uiState.update { it.copy(customCategories = items) }
+            }
+        }
+    }
 
     fun cancelScanning() {
         scanningJob?.cancel()
@@ -246,13 +257,9 @@ class ScanSharedViewModel @Inject constructor(
 
     fun addCustomCategory(name: String, colorHex: String) {
         if (name.isBlank()) return
-        val newItem = CategoryItem(name, colorHex)
-        _uiState.update { state ->
-            if (state.customCategories.none { it.name == name }) {
-                state.copy(customCategories = state.customCategories + newItem)
-            } else {
-                state
-            }
+        viewModelScope.launch {
+            // DB에 저장 → categories Flow가 자동으로 갱신되어 customCategories도 동기화됨
+            repository.insertCategory(name)
         }
     }
 

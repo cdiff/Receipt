@@ -69,6 +69,7 @@ import com.pasic.receipt.ui.scan.result.ReceiptSaveSuccessDialog
 import com.pasic.receipt.ui.scan.result.TaxWarningBanner
 import com.pasic.receipt.ui.scan.result.getCategoryBorderColor
 import com.pasic.receipt.ui.scan.result.parseHexColor
+import com.pasic.receipt.ui.theme.CategoryThemeRegistry
 import com.pasic.receipt.ui.theme.ScreenBackground
 import com.pasic.receipt.util.ReceiptImageStorage
 
@@ -255,9 +256,11 @@ fun ReceiptScanResultScreen(
                     merchantName = merchantName,
                     suggestedCategory = suggestedCategory,
                     onCreateCategory = {
-                        viewModel.addCustomCategory(suggestedCategory, "#F3E8FF")
+                        viewModel.addCustomCategory(suggestedCategory, "")
                         selectedCategory = suggestedCategory
-                        selectedCategoryColor = "#F3E8FF"
+                        // CategoryThemeRegistry에서 실제 카테고리 테마 색상 조회
+                        val theme = CategoryThemeRegistry.getTheme(suggestedCategory)
+                        selectedCategoryColor = "#%06X".format(theme.tagBgColor.value.toLong().and(0xFFFFFF))
                         isAiCatSuggestionDismissed = true
                     },
                     onCustomInput = {
