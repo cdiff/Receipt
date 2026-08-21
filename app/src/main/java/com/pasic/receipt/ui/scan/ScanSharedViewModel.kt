@@ -62,7 +62,10 @@ class ScanSharedViewModel @Inject constructor(
             repository.getAllCategories().collectLatest { entities ->
                 val items = entities.map { entity ->
                     val theme = CategoryThemeRegistry.getTheme(entity.name)
-                    val hex = "#%06X".format(theme.tagBgColor.value.toLong().and(0xFFFFFF))
+                    val r = (theme.tagBgColor.red * 255).toInt().coerceIn(0, 255)
+                    val g = (theme.tagBgColor.green * 255).toInt().coerceIn(0, 255)
+                    val b = (theme.tagBgColor.blue * 255).toInt().coerceIn(0, 255)
+                    val hex = String.format("#%02X%02X%02X", r, g, b)
                     CategoryItem(name = entity.name, colorHex = hex)
                 }
                 _uiState.update { it.copy(customCategories = items) }

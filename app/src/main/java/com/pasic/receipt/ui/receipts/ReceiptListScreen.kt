@@ -143,8 +143,8 @@ fun ReceiptListScreen(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp)
         ) {
-            // 상단 여백 (알약형 헤더 여유 공간)
-            Spacer(modifier = Modifier.height(28.dp))
+            // 상단 여백 (상단 헤더 여유 공간)
+            Spacer(modifier = Modifier.height(12.dp))
 
             // 1. 월 선택 / 기간 선택 헤더 (< 2026년 10월 >)
             MonthHeaderSelector(

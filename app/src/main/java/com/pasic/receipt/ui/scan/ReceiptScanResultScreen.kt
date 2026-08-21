@@ -338,18 +338,19 @@ fun ReceiptScanResultScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     uiState.customCategories.forEach { categoryItem ->
+                        val theme = CategoryThemeRegistry.getTheme(categoryItem.name)
                         val isSelected = selectedCategory == categoryItem.name
-                        val accentColor = getCategoryBorderColor(categoryItem.colorHex)
+
                         Surface(
                             onClick = {
                                 selectedCategory = categoryItem.name
                                 selectedCategoryColor = categoryItem.colorHex
                             },
                             shape = RoundedCornerShape(20.dp),
-                            color = if (isSelected) parseHexColor(categoryItem.colorHex) else Color.White,
+                            color = if (isSelected) theme.tagBgColor else Color.White,
                             border = androidx.compose.foundation.BorderStroke(
                                 width = if (isSelected) 1.5.dp else 1.dp,
-                                color = if (isSelected) accentColor else Color(0xFFE2E8F0)
+                                color = if (isSelected) theme.iconColor else Color(0xFFE2E8F0)
                             ),
                             modifier = Modifier.height(40.dp)
                         ) {
@@ -361,7 +362,7 @@ fun ReceiptScanResultScreen(
                                     text = categoryItem.name,
                                     fontSize = 14.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) accentColor else Color(0xFF64748B)
+                                    color = if (isSelected) theme.tagTextColor else Color(0xFF64748B)
                                 )
                             }
                         }
