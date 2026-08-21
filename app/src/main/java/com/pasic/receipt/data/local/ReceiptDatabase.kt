@@ -2,10 +2,17 @@ package com.pasic.receipt.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.pasic.receipt.data.local.dao.CategoryDao
 import com.pasic.receipt.data.local.dao.ReceiptDao
+import com.pasic.receipt.data.local.entity.CategoryEntity
 import com.pasic.receipt.data.local.entity.ReceiptEntity
 
-@Database(entities = [ReceiptEntity::class], version = 3, exportSchema = false)
+@Database(
+    entities = [ReceiptEntity::class, CategoryEntity::class],
+    version = 4,
+    exportSchema = false
+)
 abstract class ReceiptDatabase : RoomDatabase() {
     abstract fun receiptDao(): ReceiptDao
+    abstract fun categoryDao(): CategoryDao
 }
