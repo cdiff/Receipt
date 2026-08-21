@@ -38,8 +38,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pasic.receipt.ui.components.AppFloatingToast
 import com.pasic.receipt.ui.components.ReceiptBottomNavigation
 import com.pasic.receipt.ui.export.ExportScreen
+import com.pasic.receipt.ui.export.ExportViewModel
+import com.pasic.receipt.ui.export.PdfInfoBottomSheet
+import com.pasic.receipt.ui.export.PdfPreviewDialog
+import com.pasic.receipt.ui.export.PdfSaveSuccessDialog
+import com.pasic.receipt.ui.export.ReportFormatSelectBottomSheet
 import com.pasic.receipt.ui.home.HomeScreen
 import com.pasic.receipt.ui.receipts.ReceiptListScreen
+import com.pasic.receipt.ui.scan.ScanSharedViewModel
 import com.pasic.receipt.util.ToastEventBus
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
@@ -49,6 +55,7 @@ import kotlinx.coroutines.launch
 /**
  * 앱 전체 화면 및 하단 네비게이션, 전역 토스트 오버레이, 뒤로가기 처리를 단 1곳에서 공통 제어하는 최상위 래퍼 스캐폴드.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScaffold(
     navController: NavHostController = rememberNavController()
@@ -117,8 +124,16 @@ fun MainAppScaffold(
     val notificationViewModel: com.pasic.receipt.ui.notification.NotificationViewModel = hiltViewModel()
     val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState()
 
+    // 내보내기 뷰모델 및 스캔/수기입력 공유 뷰모델
+    val exportViewModel: ExportViewModel = hiltViewModel()
+    val exportUiState by exportViewModel.uiState.collectAsState()
+    val scanSharedViewModel: ScanSharedViewModel = hiltViewModel()
+
+    var showReportFormatSheet by remember { mutableStateOf(false) }
+    var showMonthlyPdfInfoSheet by remember { mutableStateOf(false) }
+
     // 하단 탭바 표시 여부
-    val hasBottomBar = currentRoute !in listOf("scan", "scan_result", "notifications") && !currentRoute.startsWith("receipt_detail") && !currentRoute.startsWith("notice_detail")
+    val hasBottomBar = currentRoute !in listOf("scan", "scan_result", "notifications", "support_center") && !currentRoute.startsWith("receipt_detail") && !currentRoute.startsWith("notice_detail")
 
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -216,8 +231,7 @@ fun MainAppScaffold(
                         exitTransition = { slideOutVertically(animationSpec = tween(280)) { fullHeight -> fullHeight } },
                         popEnterTransition = { slideInVertically(animationSpec = tween(320)) { fullHeight -> fullHeight } },
                         popExitTransition = { slideOutVertically(animationSpec = tween(280)) { fullHeight -> fullHeight } }
-                    ) { backStackEntry ->
-                        val scanSharedViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(backStackEntry)
+                    ) {
                         com.pasic.receipt.ui.scan.CameraScanScreen(
                             viewModel = scanSharedViewModel,
                             onNavigateToResult = {
@@ -229,7 +243,7 @@ fun MainAppScaffold(
                         )
                     }
 
-                    // 3. 스캔 결과 화면
+                    // 3. 스캔 결과 및 직접 수기 입력 화면
                     composable(
                         route = "scan_result",
                         enterTransition = { fadeIn(animationSpec = tween(250)) },
@@ -237,26 +251,18 @@ fun MainAppScaffold(
                         popEnterTransition = { fadeIn(animationSpec = tween(250)) },
                         popExitTransition = { fadeOut(animationSpec = tween(250)) }
                     ) {
-                        val prevBackStackEntry = remember(navController) {
-                            runCatching { navController.getBackStackEntry("scan") }.getOrNull()
-                        }
-                        if (prevBackStackEntry != null) {
-                            val scanSharedViewModel: com.pasic.receipt.ui.scan.ScanSharedViewModel = hiltViewModel(prevBackStackEntry)
-                            com.pasic.receipt.ui.scan.ReceiptScanResultScreen(
-                                viewModel = scanSharedViewModel,
-                                onNavigateBackToScan = {
-                                    navController.popBackStack()
-                                },
-                                onSaveSuccess = {
-                                    navController.navigate("receipts") {
-                                        popUpTo("home") { inclusive = false }
-                                        launchSingleTop = true
-                                    }
+                        com.pasic.receipt.ui.scan.ReceiptScanResultScreen(
+                            viewModel = scanSharedViewModel,
+                            onNavigateBackToScan = {
+                                navController.popBackStack()
+                            },
+                            onSaveSuccess = {
+                                navController.navigate("receipts") {
+                                    popUpTo("home") { inclusive = false }
+                                    launchSingleTop = true
                                 }
-                            )
-                        } else {
-                            navController.popBackStack()
-                        }
+                            }
+                        )
                     }
 
                     // 4. 영수증 상세 페이지 (수평 슬라이드)
@@ -312,6 +318,9 @@ fun MainAppScaffold(
                                     delay(300)
                                     isTransitioning = false
                                 }
+                            },
+                            onNavigateToSupport = {
+                                navController.navigate("support_center")
                             }
                         )
                     }
@@ -351,6 +360,24 @@ fun MainAppScaffold(
                             noticeId = noticeId,
                             onNavigateBack = {
                                 navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // 9. 고객센터 및 라이선스 화면 (수평 슬라이드 트랜지션)
+                    composable(
+                        route = "support_center",
+                        enterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } },
+                        exitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popEnterTransition = { androidx.compose.animation.slideInHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } },
+                        popExitTransition = { androidx.compose.animation.slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } }
+                    ) {
+                        com.pasic.receipt.ui.support.CustomerSupportScreen(
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToNoticeDetail = { noticeId ->
+                                navController.navigate("notice_detail/$noticeId")
                             }
                         )
                     }
@@ -421,25 +448,67 @@ fun MainAppScaffold(
             },
             onMonthlyReportClick = {
                 showSpeedDial = false
-                navController.navigate("export") {
-                    popUpTo("home") { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
-                }
+                showReportFormatSheet = true
             },
             onManualInputClick = {
                 showSpeedDial = false
-                com.pasic.receipt.util.ToastEventBus.showToast("직접 수기 입력 준비 중입니다.")
+                scanSharedViewModel.startManualInputMode()
+                navController.navigate("scan_result")
             },
             onZipBackupClick = {
                 showSpeedDial = false
-                navController.navigate("export") {
-                    popUpTo("home") { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
-                }
+                exportViewModel.exportAllReceiptsZipQuick(context)
             }
         )
+
+        // ── [이번달 지출 보고서] 파일 형식 선택 바텀시트 (CSV 즉시 다운로드 / PDF ➔ 내보내기 공통 PdfInfoBottomSheet 호출) ──
+        if (showReportFormatSheet) {
+            ReportFormatSelectBottomSheet(
+                onDismissRequest = { showReportFormatSheet = false },
+                onSelectCsv = {
+                    exportViewModel.exportMonthlyCsvQuick(context)
+                },
+                onSelectPdf = {
+                    showReportFormatSheet = false
+                    coroutineScope.launch {
+                        delay(150)
+                        showMonthlyPdfInfoSheet = true
+                    }
+                }
+            )
+        }
+
+        // ── [내보내기 공통] 지출결의서 정보 입력 바텀시트 (홈 화면 더보기에서도 오리지널 UI 100% 동일 재사용) ──
+        if (showMonthlyPdfInfoSheet) {
+            PdfInfoBottomSheet(
+                initialAuthor = exportUiState.defaultAuthor,
+                initialDept = exportUiState.defaultDepartment,
+                initialPurpose = exportUiState.defaultPurpose,
+                onDismiss = { showMonthlyPdfInfoSheet = false },
+                onConfirm = { author, dept, purpose ->
+                    showMonthlyPdfInfoSheet = false
+                    exportViewModel.exportMonthlyPdfQuick(context, author, dept, purpose)
+                }
+            )
+        }
+
+        // ── PDF 미리보기 다이얼로그 ──
+        if (exportUiState.showPdfPreviewDialog && exportUiState.previewPdfFile != null) {
+            PdfPreviewDialog(
+                pdfFile = exportUiState.previewPdfFile!!,
+                onDismiss = { exportViewModel.dismissPdfPreviewDialog() },
+                onConfirmSave = { exportViewModel.confirmSavePdf(context) }
+            )
+        }
+
+        // ── 파일 저장 완료 다이얼로그 (CSV, PDF, ZIP 공통) ──
+        if (exportUiState.showSaveSuccessDialog) {
+            PdfSaveSuccessDialog(
+                fileName = exportUiState.savedFileName,
+                savedFile = exportUiState.previewPdfFile,
+                onDismiss = { exportViewModel.dismissSaveSuccessDialog() }
+            )
+        }
 
         // ── 전역 단일 플로팅 알약 캡슐 토스트 오버레이 (탭바 유무에 따른 동적 패딩) ──
         AppFloatingToast(

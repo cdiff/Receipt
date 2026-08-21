@@ -25,7 +25,7 @@ import com.pasic.receipt.ui.theme.TextPrimary
 internal fun GeneralSettingsSection(
     currentTheme: AppThemeOption,
     onThemeClick: () -> Unit,
-    onLicenseClick: () -> Unit,
+    onSupportClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -56,7 +56,7 @@ internal fun GeneralSettingsSection(
         SettingsNavigationRow(
             title = "고객 센터 및 라이선스",
             subtitle = null,
-            onClick = onLicenseClick,
+            onClick = onSupportClick,
             verticalPadding = 18.dp
         )
     }
