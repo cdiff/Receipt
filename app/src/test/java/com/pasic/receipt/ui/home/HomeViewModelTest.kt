@@ -19,6 +19,7 @@ import org.mockito.Mockito
 class HomeViewModelTest {
 
     private val repository: ReceiptRepository = Mockito.mock(ReceiptRepository::class.java)
+    private val preferencesRepository: com.pasic.receipt.data.preferences.UserPreferencesRepository = Mockito.mock(com.pasic.receipt.data.preferences.UserPreferencesRepository::class.java)
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
@@ -36,7 +37,7 @@ class HomeViewModelTest {
         val emptyFlow = flowOf<List<ReceiptEntity>>(emptyList())
         Mockito.doReturn(emptyFlow).`when`(repository).getAllReceipts()
 
-        val viewModel = HomeViewModel(repository)
+        val viewModel = HomeViewModel(repository, preferencesRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -60,7 +61,7 @@ class HomeViewModelTest {
         val listFlow = flowOf(testList)
         Mockito.doReturn(listFlow).`when`(repository).getAllReceipts()
 
-        val viewModel = HomeViewModel(repository)
+        val viewModel = HomeViewModel(repository, preferencesRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
