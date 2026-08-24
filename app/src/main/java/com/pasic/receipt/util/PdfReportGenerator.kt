@@ -34,7 +34,7 @@ object PdfReportGenerator {
     private const val TARGET_PAGE1_DATA_ROWS = 15 // 1페이지 전용 고정 격자 행 수
 
     // ── 열 너비 (합계 = CONTENT_WIDTH = 515pt) ─────────────────────
-    private val COL_WIDTHS = floatArrayOf(75f, 115f, 70f, 45f, 75f, 45f, 90f)
+    private val COL_WIDTHS = floatArrayOf(70f, 110f, 65f, 35f, 75f, 35f, 125f)
     private val COL_HEADERS = arrayOf("날  자", "거 래 처 명", "내  역", "부진", "지  출", "기타", "적  요")
 
     // ── Paint 스타일 (선명한 흑백 또렷한 선 & 폰트) ─────────────────
@@ -385,7 +385,7 @@ object PdfReportGenerator {
         val categoryStr = truncate(receipt.category, 8)
         val paymentStr = truncate(receipt.paymentMethod, 6)
         val amountStr = "${formatter.format(receipt.totalAmount.toLong())}원"
-        val memoStr = truncate(receipt.memo ?: "", 9)
+        val memoRaw = receipt.memo?.trim() ?: ""
 
         var x = MARGIN_LEFT
         COL_WIDTHS.forEachIndexed { i, w ->
@@ -405,7 +405,20 @@ object PdfReportGenerator {
                 3 -> canvas.drawText(paymentStr, centerX, y + ROW_HEIGHT / 2f + 3.5f, cp)  // [부진]: 중간 정렬
                 4 -> canvas.drawText(amountStr, centerX, y + ROW_HEIGHT / 2f + 3.5f, cp)   // [지출]: '원' 부착 및 중간 정렬
                 5 -> { /* [기타]: 공란 */ }
-                6 -> canvas.drawText(memoStr, centerX, y + ROW_HEIGHT / 2f + 3.5f, cp)     // [적요]: 중간 정렬
+                6 -> { // [적요]: 1줄 또는 2줄 멀티라인 자동 줄바꿈
+                    if (memoRaw.isNotBlank()) {
+                        val availableWidth = w - 8f // 좌우 여백 4pt씩
+                        if (cp.measureText(memoRaw) <= availableWidth) {
+                            canvas.drawText(memoRaw, centerX, y + ROW_HEIGHT / 2f + 3.5f, cp)
+                        } else {
+                            val (line1, line2) = splitTextIntoTwoLines(memoRaw, subCp, availableWidth)
+                            canvas.drawText(line1, centerX, y + 11f, subCp)
+                            if (line2.isNotBlank()) {
+                                canvas.drawText(line2, centerX, y + 22f, subCp)
+                            }
+                        }
+                    }
+                }
             }
 
             if (i < COL_WIDTHS.size - 1) {
@@ -478,4 +491,33 @@ object PdfReportGenerator {
 
     private fun truncate(text: String, maxLen: Int): String =
         if (text.length > maxLen) text.take(maxLen - 1) + "…" else text
+
+    /**
+     * 긴 텍스트를 정해진 너비에 맞추어 2줄로 자연스럽게 분할하는 유틸
+     */
+    private fun splitTextIntoTwoLines(text: String, paint: Paint, maxWidth: Float): Pair<String, String> {
+        var splitIndex = 0
+        for (i in 1..text.length) {
+            val sub = text.substring(0, i)
+            if (paint.measureText(sub) > maxWidth) {
+                splitIndex = (i - 1).coerceAtLeast(1)
+                break
+            }
+            splitIndex = i
+        }
+        val firstLine = text.substring(0, splitIndex)
+        var secondLine = text.substring(splitIndex).trim()
+
+        if (paint.measureText(secondLine) > maxWidth) {
+            var secondSplitIndex = secondLine.length
+            for (i in 1..secondLine.length) {
+                if (paint.measureText(secondLine.substring(0, i) + "…") > maxWidth) {
+                    secondSplitIndex = (i - 1).coerceAtLeast(1)
+                    break
+                }
+            }
+            secondLine = secondLine.substring(0, secondSplitIndex) + "…"
+        }
+        return Pair(firstLine, secondLine)
+    }
 }
