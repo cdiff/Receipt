@@ -48,15 +48,19 @@
 <div align="center">
   <table>
     <tr>
-      <th width="50%">✨ 스캔 및 AI 자동 추출 성공</th>
-      <th width="50%">⚠️ 영수증 인식 실패 & 재촬영 안내</th>
+      <th width="33%">✨ 스캔 및 AI 자동 추출</th>
+      <th width="33%">💡 AI 카테고리 추천 & 생성</th>
+      <th width="33%">⚠️ 인식 실패 & 재촬영 안내</th>
     </tr>
     <tr>
       <td align="center">
-        <img src="docs/gif/영수증 스캔 성공 영상.gif" width="260" alt="스캔 성공"/>
+        <img src="docs/gif/영수증 스캔 성공 영상.gif" width="240" alt="스캔 성공"/>
       </td>
       <td align="center">
-        <img src="docs/gif/영수증 스캔 실패 영상.gif" width="260" alt="스캔 실패"/>
+        <img src="docs/gif/영수증 스캔 카테고리 추천 영상.gif" width="240" alt="카테고리 추천"/>
+      </td>
+      <td align="center">
+        <img src="docs/gif/영수증 스캔 실패 영상.gif" width="240" alt="스캔 실패"/>
       </td>
     </tr>
   </table>
