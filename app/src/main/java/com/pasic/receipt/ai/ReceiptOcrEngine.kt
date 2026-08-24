@@ -27,7 +27,7 @@ data class OcrResult(
     val categoryColor: String = "#FEF3C7",
     val subCategory: String = "", // 소분류 (예: 카페, 일반식당, 택시, 편의점 등)
     val suggestedNewCategory: String = "",
-    val paymentMethod: String = "신용카드",
+    val paymentMethod: String = "카드",
     val proofType: String = "일반영수증",
     val vatAmount: Double? = null,
     val imagePath: String = ""
@@ -44,7 +44,7 @@ object ReceiptOcrEngine {
             "category"               to Schema.string(description = "기본값은 '미분류'. 실제 구매 품목이 음식/음료이면 '식비', 이동 수단 비용이면 '교통비', 업무용 문구/소모품이면 '사무용품'으로만 변경. 편의점 담배·주류·생활용품은 '미분류'"),
             "subCategory"            to Schema.string(description = "구체적인 업종/품목 소분류 단어 1개 (예: 편의점, 약국, 카페, 식당, 택시, 주유소, 병원 등)"),
             "suggestedNewCategory"   to Schema.string(description = "category가 '미분류'인 경우, 식비/교통비/사무용품과 같은 수준의 넓은 대분류 카테고리명 1개 제안 (예: 생활용품, 의료비, 문화생활, 쇼핑, 주거비, 통신비 등). 미분류가 아니면 빈 문자열"),
-            "paymentMethod"          to Schema.string(description = "결제 수단 (예: 신용카드, 체크카드, 현금, 간편결제 중 하나)"),
+            "paymentMethod"          to Schema.string(description = "결제 수단 (예: 카드, 현금, 간편결제 중 하나)"),
             "proofType"              to Schema.string(description = "증빙 유형 (예: 일반영수증, 현금영수증, 세금계산서 중 하나)"),
             "vatAmount"              to Schema.double(description = "영수증에 적힌 부가가치세 금액 (숫자만. 없으면 0.0)"),
             "confidence"             to Schema.integer(description = "0~100 사이 인식 신뢰도 점수")
@@ -113,7 +113,7 @@ object ReceiptOcrEngine {
                 5. category: 위 [카테고리 분류 방법]에 따라 결정. 기본값은 "미분류".
                 6. subCategory: 업종/품목 소분류 단어 1개 (예: 편의점, 카페, 약국, 택시, 마트 등)
                 7. suggestedNewCategory: category가 "미분류"인 경우, 구매 품목의 실제 지출 성격에 맞는 새로운 대분류 카테고리명을 1개 제안하세요. 반드시 식비/교통비/사무용품과 같은 수준의 넓은 대분류여야 합니다 (예: 생활용품, 의료비, 문화생활, 쇼핑, 주거비, 통신비, 외식 등). category가 미분류가 아니고 완벽히 일치하면 빈 문자열("").
-                8. paymentMethod: "신용카드", "체크카드", "현금", "간편결제" 중 하나 (불확실 시 "신용카드")
+                8. paymentMethod: "카드", "현금", "간편결제" 중 하나 (불확실 시 "카드")
                 9. proofType: "일반영수증", "현금영수증", "세금계산서" 중 하나 (불확실 시 "일반영수증")
                 10. vatAmount: 영수증에 표기된 부가세 금액 (숫자만, 없으면 0.0)
                 11. confidence: 인식 신뢰도 점수 (0~100 정수)
@@ -180,7 +180,13 @@ object ReceiptOcrEngine {
             val suggestedNewCategory = extractJsonField(jsonPayload, "suggestedNewCategory").replace("#", "").trim()
             val confidence = extractJsonField(jsonPayload, "confidence").toIntOrNull()?.coerceIn(30, 100) ?: 85
 
-            val paymentMethod = extractJsonField(jsonPayload, "paymentMethod").ifBlank { "신용카드" }
+            val rawPaymentMethod = extractJsonField(jsonPayload, "paymentMethod").ifBlank { "카드" }
+            val paymentMethod = when {
+                rawPaymentMethod.contains("카드") -> "카드"
+                rawPaymentMethod.contains("현금") -> "현금"
+                rawPaymentMethod.contains("간편") || rawPaymentMethod.contains("페이") -> "간편결제"
+                else -> "카드"
+            }
             val proofType = extractJsonField(jsonPayload, "proofType").ifBlank { "일반영수증" }
             val extractedVat = extractJsonField(jsonPayload, "vatAmount").toDoubleOrNull()
 

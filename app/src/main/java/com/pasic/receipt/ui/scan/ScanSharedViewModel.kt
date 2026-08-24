@@ -313,7 +313,7 @@ class ScanSharedViewModel @Inject constructor(
         categoryColor: String,
         imagePath: String,
         subCategory: String? = null,
-        paymentMethod: String = "신용카드",
+        paymentMethod: String = "카드",
         proofType: String = "일반영수증",
         vatAmount: Double? = null
     ) {
