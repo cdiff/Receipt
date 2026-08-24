@@ -41,7 +41,7 @@ internal fun GeneralSettingsSection(
         )
         SettingsValueRow(
             title = "테마",
-            value = currentTheme.label,
+            value = "라이트",
             onClick = onThemeClick,
             verticalPadding = 18.dp
         )

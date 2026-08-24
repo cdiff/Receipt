@@ -205,6 +205,14 @@ private fun PdfInfoField(
     onValueChange: (String) -> Unit,
     placeholder: String
 ) {
+    var textState by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text = value, selection = androidx.compose.ui.text.TextRange(value.length))) }
+
+    androidx.compose.runtime.LaunchedEffect(value) {
+        if (textState.text != value) {
+            textState = androidx.compose.ui.text.input.TextFieldValue(text = value, selection = androidx.compose.ui.text.TextRange(value.length))
+        }
+    }
+
     Column {
         Text(
             text = label,
@@ -214,8 +222,13 @@ private fun PdfInfoField(
             modifier = Modifier.padding(bottom = 6.dp)
         )
         BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
+            value = textState,
+            onValueChange = { newTextState ->
+                textState = newTextState
+                if (newTextState.text != value) {
+                    onValueChange(newTextState.text)
+                }
+            },
             textStyle = TextStyle(
                 fontSize = 14.sp,
                 color = TextPrimary
@@ -226,10 +239,10 @@ private fun PdfInfoField(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.5.dp, if (value.isNotEmpty()) FabNavy.copy(0.6f) else Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                        .border(1.5.dp, if (textState.text.isNotEmpty()) FabNavy.copy(0.6f) else Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
-                    if (value.isEmpty()) {
+                    if (textState.text.isEmpty()) {
                         Text(placeholder, fontSize = 14.sp, color = TextMuted)
                     }
                     inner()

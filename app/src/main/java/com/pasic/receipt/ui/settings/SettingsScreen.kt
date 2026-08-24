@@ -208,7 +208,9 @@ fun SettingsScreen(
             // ── 섹션 5. 기본 설정 ───────────────────────────────────────
             GeneralSettingsSection(
                 currentTheme = userPrefs.appTheme,
-                onThemeClick = { viewModel.setShowThemeDialog(true) },
+                onThemeClick = {
+                    com.pasic.receipt.util.ToastEventBus.showToast("다크 모드는 추후 업데이트 예정입니다.")
+                },
                 onSupportClick = onNavigateToSupport
             )
         }

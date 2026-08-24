@@ -19,19 +19,25 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.FileText
 import com.composables.icons.lucide.Lucide
-
-import androidx.compose.ui.focus.onFocusChanged
 
 @Composable
 fun ReceiptPostItMemoCard(
@@ -96,10 +102,23 @@ fun ReceiptPostItMemoCard(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
+                var textState by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text = memoText, selection = androidx.compose.ui.text.TextRange(memoText.length))) }
+
+                androidx.compose.runtime.LaunchedEffect(memoText) {
+                    if (textState.text != memoText) {
+                        textState = androidx.compose.ui.text.input.TextFieldValue(text = memoText, selection = androidx.compose.ui.text.TextRange(memoText.length))
+                    }
+                }
+
                 // 메모 본문 내용
                 BasicTextField(
-                    value = memoText,
-                    onValueChange = onMemoChange,
+                    value = textState,
+                    onValueChange = { newTextState ->
+                        textState = newTextState
+                        if (newTextState.text != memoText) {
+                            onMemoChange(newTextState.text)
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .onFocusChanged { focusState ->
@@ -116,7 +135,7 @@ fun ReceiptPostItMemoCard(
                     cursorBrush = SolidColor(Color(0xFF92400E)),
                     decorationBox = { innerTextField ->
                         Box(modifier = Modifier.fillMaxWidth()) {
-                            if (memoText.isEmpty()) {
+                            if (textState.text.isEmpty()) {
                                 Text(
                                     text = "메모를 입력해 보세요...",
                                     fontSize = 14.sp,

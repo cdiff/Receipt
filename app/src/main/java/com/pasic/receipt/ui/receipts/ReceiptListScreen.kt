@@ -367,9 +367,22 @@ private fun ReceiptSearchBar(
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            var textState by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text = query, selection = androidx.compose.ui.text.TextRange(query.length))) }
+
+            androidx.compose.runtime.LaunchedEffect(query) {
+                if (textState.text != query) {
+                    textState = androidx.compose.ui.text.input.TextFieldValue(text = query, selection = androidx.compose.ui.text.TextRange(query.length))
+                }
+            }
+
             BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
+                value = textState,
+                onValueChange = { newTextState ->
+                    textState = newTextState
+                    if (newTextState.text != query) {
+                        onQueryChange(newTextState.text)
+                    }
+                },
                 singleLine = true,
                 textStyle = TextStyle(
                     fontSize = 15.sp,
@@ -377,7 +390,7 @@ private fun ReceiptSearchBar(
                     fontWeight = FontWeight.Medium
                 ),
                 decorationBox = { innerTextField ->
-                    if (query.isEmpty()) {
+                    if (textState.text.isEmpty()) {
                         Text(
                             text = "영수증 검색 (상호명, 품목)",
                             fontSize = 15.sp,

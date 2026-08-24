@@ -37,11 +37,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
@@ -224,6 +227,14 @@ private fun SettingsInputField(
     placeholder: String
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    var textState by remember { mutableStateOf(TextFieldValue(text = value, selection = TextRange(value.length))) }
+
+    // 외부에서 값이 변경되었을 때만 로컬 textState 동기화 (포커스가 없거나 텍스트 내용이 다를 때)
+    LaunchedEffect(value) {
+        if (textState.text != value) {
+            textState = TextFieldValue(text = value, selection = TextRange(value.length))
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -256,7 +267,7 @@ private fun SettingsInputField(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    if (value.isEmpty()) {
+                    if (textState.text.isEmpty()) {
                         Text(text = placeholder, fontSize = 14.sp, color = TextMuted)
                     }
                     val customSelectionColors = remember {
@@ -267,8 +278,13 @@ private fun SettingsInputField(
                     }
                     CompositionLocalProvider(LocalTextSelectionColors provides customSelectionColors) {
                         BasicTextField(
-                            value = value,
-                            onValueChange = onValueChange,
+                            value = textState,
+                            onValueChange = { newTextState ->
+                                textState = newTextState
+                                if (newTextState.text != value) {
+                                    onValueChange(newTextState.text)
+                                }
+                            },
                             singleLine = true,
                             cursorBrush = SolidColor(Color(0xFF2563EB)),
                             textStyle = TextStyle(
@@ -283,7 +299,7 @@ private fun SettingsInputField(
                     }
                 }
 
-                if (value.isNotEmpty()) {
+                if (textState.text.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = Lucide.X,
@@ -294,7 +310,10 @@ private fun SettingsInputField(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
-                            ) { onValueChange("") }
+                            ) {
+                                textState = TextFieldValue("")
+                                onValueChange("")
+                            }
                     )
                 }
             }
