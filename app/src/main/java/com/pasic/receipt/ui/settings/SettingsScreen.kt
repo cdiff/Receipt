@@ -238,6 +238,7 @@ fun SettingsScreen(
                     restoreLauncher.launch(arrayOf("application/zip"))
                 },
                 onGoogleDriveClick = {
+                    viewModel.setShowBackupRestoreDialog(false)
                     com.pasic.receipt.util.ToastEventBus.showToast("Google Drive 클라우드 백업 준비 중입니다.")
                 }
             )

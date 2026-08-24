@@ -213,13 +213,6 @@ fun ReceiptDetailScreen(
                             modifier = Modifier.background(Color.White)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("수정하기", color = Color(0xFF0F172A)) },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToEdit(receiptId)
-                                }
-                            )
-                            DropdownMenuItem(
                                 text = { Text("공유하기", color = Color(0xFF0F172A)) },
                                 onClick = {
                                     showMenu = false

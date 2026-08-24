@@ -59,8 +59,8 @@ import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ArrowLeft
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Mail
 import com.composables.icons.lucide.MessageSquare
-import com.composables.icons.lucide.Phone
 import com.pasic.receipt.R
 import com.pasic.receipt.ui.theme.TextPrimary
 import com.pasic.receipt.ui.theme.TextSecondary
@@ -68,6 +68,7 @@ import com.pasic.receipt.util.ToastEventBus
 import kotlinx.coroutines.delay
 
 private const val KAKAO_OPEN_CHAT_URL = "https://open.kakao.com/o/scpC0uJi" // 카카오톡 오픈채팅방 실링크
+private const val SUPPORT_EMAIL = "pasic1@naver.com" // 고객센터 문의 이메일
 private const val TERMS_OF_SERVICE_URL = "https://cdiff.github.io/Receipt/terms_of_service.html" // 서비스 이용약관 웹 링크
 private const val PRIVACY_POLICY_URL = "https://cdiff.github.io/Receipt/privacy_policy.html" // 개인정보 처리방침 웹 링크
 
@@ -262,11 +263,20 @@ fun CustomerSupportScreen(
                 )
 
                 QuickContactCard(
-                    icon = Lucide.Phone,
-                    label = "고객센터 전화",
+                    icon = Lucide.Mail,
+                    label = "이메일 문의",
                     modifier = Modifier.weight(1f),
                     onClick = {
-                        ToastEventBus.showToast("고객센터 전화 상담 준비 중입니다.")
+                        runCatching {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:$SUPPORT_EMAIL")
+                                putExtra(Intent.EXTRA_SUBJECT, "[영수증 쏙] 문의 및 건의사항")
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(intent)
+                        }.onFailure {
+                            ToastEventBus.showToast("이메일 앱을 열 수 없습니다: $SUPPORT_EMAIL")
+                        }
                     }
                 )
             }
