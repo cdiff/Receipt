@@ -29,6 +29,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -78,15 +81,32 @@ fun ReceiptDetailScreen(
         viewModel.loadReceipt(receiptId)
     }
 
-    LaunchedEffect(uiState.isDeleted) {
-        if (uiState.isDeleted) {
-            com.pasic.receipt.util.ToastEventBus.showToast("영수증이 삭제되었습니다.")
-            onNavigateBack()
+    // 삭제 완료 일회성 이벤트 수신 → 토스트 노출 후 즉시 목록 복귀
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ReceiptDetailEvent.NavigateBack -> {
+                    com.pasic.receipt.util.ToastEventBus.showToast("영수증이 삭제되었습니다.")
+                    onNavigateBack()
+                }
+            }
         }
     }
 
     var showMenu by remember { mutableStateOf(false) }
     var showImageZoomDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // 삭제 확인 다이얼로그
+    if (showDeleteDialog) {
+        ReceiptDeleteConfirmationDialog(
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.deleteReceipt()
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
 
     val receipt = uiState.receipt
 
@@ -223,7 +243,7 @@ fun ReceiptDetailScreen(
                                 text = { Text("삭제하기", color = Color(0xFFEF4444)) },
                                 onClick = {
                                     showMenu = false
-                                    viewModel.deleteReceipt()
+                                    showDeleteDialog = true
                                 }
                             )
                         }
@@ -334,4 +354,41 @@ private fun shareReceiptInfo(context: Context, receipt: ReceiptEntity) {
     } catch (e: Exception) {
         e.printStackTrace()
     }
+}
+
+@Composable
+fun ReceiptDeleteConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "영수증을 삭제할까요?",
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp
+            )
+        },
+        text = {
+            Text(
+                text = "삭제된 영수증은 지출 목록과 통계 분석에서 제외됩니다.",
+                color = Color(0xFF64748B),
+                fontSize = 14.sp
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소", color = Color(0xFF64748B))
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFEF4444))
+            ) {
+                Text("삭제", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }

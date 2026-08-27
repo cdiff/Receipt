@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -217,8 +218,6 @@ fun ExportScreen(
                 }
                 Spacer(modifier = Modifier.height(14.dp))
                 val cols = uiState.csvHeaderColumns
-                val previewCols = cols.take(4)
-                val extraCount = cols.size - previewCols.size
 
                 Text(
                     text = "포함된 열 (${cols.size}개)",
@@ -227,8 +226,12 @@ fun ExportScreen(
                     color = TextPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    previewCols.forEach { tag ->
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    cols.forEach { tag ->
                         Box(
                             modifier = Modifier
                                 .border(1.dp, Color(0xFFCBD5E1), CircleShape)
@@ -236,20 +239,6 @@ fun ExportScreen(
                         ) {
                             Text(
                                 text = tag,
-                                fontSize = 11.sp,
-                                color = TextSecondary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                    if (extraCount > 0) {
-                        Box(
-                            modifier = Modifier
-                                .border(1.dp, Color(0xFFCBD5E1), CircleShape)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "+$extraCount",
                                 fontSize = 11.sp,
                                 color = TextSecondary,
                                 fontWeight = FontWeight.Medium

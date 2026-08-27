@@ -5,9 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.pasic.receipt.data.local.entity.ReceiptEntity
 import com.pasic.receipt.data.repository.ReceiptRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -17,9 +23,12 @@ data class ReceiptDetailUiState(
     val categoryAverageAmount: Double = 0.0,
     val isAboveAverage: Boolean = false,
     val isLoading: Boolean = true,
-    val isDeleted: Boolean = false,
     val errorMessage: String? = null
 )
+
+sealed class ReceiptDetailEvent {
+    data object NavigateBack : ReceiptDetailEvent()
+}
 
 @HiltViewModel
 class ReceiptDetailViewModel @Inject constructor(
@@ -29,19 +38,42 @@ class ReceiptDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReceiptDetailUiState())
     val uiState: StateFlow<ReceiptDetailUiState> = _uiState.asStateFlow()
 
+    // 삭제 완료 후 일회성 화면 이탈 이벤트 채널
+    private val _events = Channel<ReceiptDetailEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
     private var currentReceiptId: Long = 0L
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun loadReceipt(id: Long) {
         currentReceiptId = id
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            repository.getReceiptById(id).collect { entity ->
-                if (entity != null) {
-                    // 동종 카테고리 평균 지출 계산
-                    val topCategory = entity.category.split("/").firstOrNull() ?: entity.category
-                    repository.getAllReceipts().collect { allReceipts ->
+
+            // 중첩 collect 제거: flatMapLatest + combine으로 단일 스트림으로 통합
+            repository.getReceiptById(id)
+                .flatMapLatest { entity ->
+                    if (entity == null) {
+                        // 영수증이 삭제된 경우 (isDeleted=1로 DB 변경) → 이벤트 채널로 화면 이탈 신호
+                        flowOf(null to emptyList<ReceiptEntity>())
+                    } else {
+                        // 존재하는 경우: 동종 카테고리 전체 목록과 combine
+                        combine(
+                            flowOf(entity),
+                            repository.getAllReceipts()
+                        ) { e, allReceipts -> e to allReceipts }
+                    }
+                }
+                .collect { (entity, allReceipts) ->
+                    if (entity == null) {
+                        // getReceiptById가 null을 방출 → 외부에서 softDelete 완료된 것
+                        // deleteReceipt()의 Channel 이벤트가 화면 이탈을 담당하므로 여기서는 로딩만 해제
+                        _uiState.update { it.copy(isLoading = false) }
+                    } else {
+                        val topCategory = entity.category.split("/").firstOrNull() ?: entity.category
                         val sameCategoryReceipts = allReceipts.filter { r ->
-                            r.category.contains(topCategory) || topCategory.contains(r.category.split("/").firstOrNull() ?: r.category)
+                            r.category.contains(topCategory) ||
+                                    topCategory.contains(r.category.split("/").firstOrNull() ?: r.category)
                         }
                         val avg = if (sameCategoryReceipts.isNotEmpty()) {
                             sameCategoryReceipts.map { it.totalAmount }.average()
@@ -55,21 +87,11 @@ class ReceiptDetailViewModel @Inject constructor(
                                 receipt = entity,
                                 categoryAverageAmount = avg,
                                 isAboveAverage = isAbove,
-                                isLoading = false,
-                                isDeleted = false
+                                isLoading = false
                             )
                         }
                     }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            receipt = null,
-                            isLoading = false,
-                            isDeleted = true
-                        )
-                    }
                 }
-            }
         }
     }
 
@@ -79,7 +101,8 @@ class ReceiptDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 repository.softDeleteReceipt(id)
-                _uiState.update { it.copy(isDeleted = true) }
+                // 일회성 이탈 이벤트 발송 (isDeleted 상태 플래그 제거로 AllReceipts 재방출이 덮어쓸 가능성 원천 차단)
+                _events.send(ReceiptDetailEvent.NavigateBack)
             } catch (e: Exception) {
                 e.printStackTrace()
                 _uiState.update { it.copy(errorMessage = "영수증 삭제에 실패했습니다.") }
@@ -110,3 +133,4 @@ class ReceiptDetailViewModel @Inject constructor(
         updateReceipt(updated)
     }
 }
+
