@@ -545,7 +545,8 @@ class ExportViewModel @Inject constructor(
                             val imgFile = File(imgPath)
                             if (imgFile.exists()) {
                                 val ext = imgFile.extension.ifEmpty { "jpg" }
-                                val cleanDate = receipt.date.replace(Regex("[^0-9]"), "")
+                                val localDate = receipt.extractLocalDate()
+                                val cleanDate = String.format(Locale.KOREA, "%04d%02d%02d", localDate.year, localDate.monthValue, localDate.dayOfMonth)
                                 val entryName = "images/receipt_${receipt.id}_${index + 1}_${cleanDate}.$ext"
                                 zos.putNextEntry(ZipEntry(entryName))
                                 imgFile.inputStream().use { it.copyTo(zos) }
@@ -634,7 +635,8 @@ class ExportViewModel @Inject constructor(
                 if (includeImageColumn) {
                     val imgFileName = if (r.imagePath.isNotBlank()) {
                         val ext = File(r.imagePath).extension.ifBlank { "jpg" }
-                        val cleanDate = r.date.replace("-", "").replace(".", "").replace("/", "").replace(" ", "")
+                        val localDate = r.extractLocalDate()
+                        val cleanDate = String.format(Locale.KOREA, "%04d%02d%02d", localDate.year, localDate.monthValue, localDate.dayOfMonth)
                         "images/receipt_${index + 1}_${cleanDate}.$ext"
                     } else ""
                     rowValues.add("\"$imgFileName\"")
@@ -647,7 +649,7 @@ class ExportViewModel @Inject constructor(
 
     private fun getColumnValue(r: ReceiptEntity, colName: String, prefs: UserPreferences): String {
         return when (colName) {
-            "결제일시" -> formatCsvDate(r.date, prefs.csvDateFormat)
+            "결제일시" -> formatCsvDate(r, prefs.csvDateFormat)
             "가맹점명" -> r.merchantName
             "결제금액" -> formatCsvAmount(r.totalAmount, prefs.csvAmountFormat)
             "공급가액" -> {
@@ -665,21 +667,19 @@ class ExportViewModel @Inject constructor(
         }
     }
 
-    private fun formatCsvDate(dateStr: String, formatPattern: String): String {
-        val digits = dateStr.replace(Regex("[^0-9]"), "")
-        if (digits.length >= 8) {
-            val yyyy = digits.substring(0, 4)
-            val mm = digits.substring(4, 6)
-            val dd = digits.substring(6, 8)
-            val yy = yyyy.takeLast(2)
-            return when (formatPattern) {
-                "YYYY. MM. DD" -> "$yyyy. $mm. $dd"
-                "YY/MM/DD" -> "$yy/$mm/$dd"
-                "YYYY년 MM월 DD일" -> "${yyyy}년 ${mm}월 ${dd}일"
-                else -> "$yyyy-$mm-$dd"
-            }
+    private fun formatCsvDate(r: ReceiptEntity, formatPattern: String): String {
+        val localDate = r.extractLocalDate()
+        val yyyy = String.format(Locale.KOREA, "%04d", localDate.year)
+        val mm = String.format(Locale.KOREA, "%02d", localDate.monthValue)
+        val dd = String.format(Locale.KOREA, "%02d", localDate.dayOfMonth)
+        val yy = yyyy.takeLast(2)
+
+        return when (formatPattern) {
+            "YYYY. MM. DD" -> "$yyyy. $mm. $dd"
+            "YY/MM/DD" -> "$yy/$mm/$dd"
+            "YYYY년 MM월 DD일" -> "${yyyy}년 ${mm}월 ${dd}일"
+            else -> "$yyyy-$mm-$dd"
         }
-        return dateStr
     }
 
     private fun formatCsvAmount(amount: Double, formatType: String): String {

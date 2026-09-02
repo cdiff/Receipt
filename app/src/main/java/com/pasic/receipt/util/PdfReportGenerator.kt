@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.pasic.receipt.data.local.entity.ReceiptEntity
+import com.pasic.receipt.data.local.entity.extractLocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -376,10 +377,8 @@ object PdfReportGenerator {
         // 셀 테두리
         canvas.drawRect(RectF(MARGIN_LEFT, y, PAGE_WIDTH - MARGIN_RIGHT, bottom), lp)
 
-        // 날짜/시간 2줄 나누기
-        val dateParts = receipt.date.split(" ")
-        val mainDate = dateParts.getOrNull(0) ?: receipt.date
-        val subTime = dateParts.getOrNull(1) ?: ""
+        // 날짜/시간 2줄 나누기 (표준 YYYY.MM.DD 및 HH:mm 파싱)
+        val (mainDate, subTime) = formatDateAndTimeToPdfLines(receipt)
 
         val merchantStr = truncate(receipt.merchantName, 12)
         val categoryStr = truncate(receipt.category, 8)
@@ -428,6 +427,35 @@ object PdfReportGenerator {
         }
 
         return bottom
+    }
+
+    private fun formatDateAndTimeToPdfLines(receipt: ReceiptEntity): Pair<String, String> {
+        val localDate = receipt.extractLocalDate()
+        val mainDate = String.format(Locale.KOREA, "%04d.%02d.%02d", localDate.year, localDate.monthValue, localDate.dayOfMonth)
+
+        var subTime = ""
+        val rawDate = receipt.date
+        val timeRegex = Regex("""(오전|오후)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?""")
+        val match = timeRegex.find(rawDate)
+        if (match != null) {
+            val ampm = match.groupValues[1]
+            var hour = match.groupValues[2].toIntOrNull() ?: 0
+            val min = match.groupValues[3].toIntOrNull() ?: 0
+            if (ampm == "오후" && hour in 1..11) {
+                hour += 12
+            } else if (ampm == "오전" && hour == 12) {
+                hour = 0
+            }
+            subTime = String.format(Locale.KOREA, "%02d:%02d", hour, min)
+        } else if (receipt.createdAt > 1000000000000L) {
+            runCatching {
+                val instant = java.time.Instant.ofEpochMilli(receipt.createdAt)
+                val zdt = instant.atZone(java.time.ZoneId.systemDefault())
+                subTime = String.format(Locale.KOREA, "%02d:%02d", zdt.hour, zdt.minute)
+            }
+        }
+
+        return Pair(mainDate, subTime)
     }
 
     // ── 빈 행 채우기 (HTML 양식처럼 정갈한 고정 서식 유지) ─────────
