@@ -32,7 +32,7 @@ import com.pasic.receipt.ui.settings.components.DividerLine
 
 @Composable
 fun NoticeDetailScreen(
-    noticeId: String = "notice_v110",
+    noticeId: String = "notice_v100_v5",
     onNavigateBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()

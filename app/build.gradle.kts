@@ -15,7 +15,7 @@ android {
         applicationId = "com.pasic.receipt"
         minSdk = 31
         targetSdk = 36
-        versionCode = 4
+        versionCode = 5
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -39,6 +39,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -61,9 +62,10 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.material)
 
-    // Firebase AI Logic (Gemini via googleAI backend) & App Check Debug & Analytics
+    // Firebase AI Logic (Gemini via googleAI backend) & App Check (Play Integrity / Debug) & Analytics
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.ai)
+    implementation(libs.firebase.appcheck.playintegrity)
     implementation(libs.firebase.appcheck.debug)
     implementation(libs.firebase.analytics)
 
