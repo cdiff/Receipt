@@ -15,6 +15,7 @@ import com.google.firebase.ai.type.generationConfig
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 data class OcrResult(
     val merchantName: String,
@@ -38,7 +39,7 @@ object ReceiptOcrEngine {
     private val receiptSchema = Schema.obj(
         properties = mapOf(
             "merchantName"           to Schema.string(description = "영수증 발행 가게 상호명 (예: 스타벅스 강남점, GS25 역삼점 등). 모르면 빈 문자열"),
-            "date"                   to Schema.string(description = "결제 일시 (예: 2026-08-18 15:30 또는 8월 18일 · 오후 3:30)"),
+            "date"                   to Schema.string(description = "결제 일시. 반드시 'YYYY-MM-DD HH:mm' 형식 (예: 2026-08-18 15:30). 연도 생략 시 현재 연도 기준"),
             "totalAmount"            to Schema.double(description = "할인/포인트 적용 후 실제 카드 승인 또는 현금 지불된 최종 실결제 금액 (숫자만)"),
             "businessNumber"         to Schema.string(description = "사업자등록번호 'XXX-XX-XXXXX' 형식 (없으면 빈 문자열)"),
             "category"               to Schema.string(description = "기본값은 '미분류'. 실제 구매 품목이 음식/음료이면 '식비', 이동 수단 비용이면 '교통비', 업무용 문구/소모품이면 '사무용품'으로만 변경. 편의점 담배·주류·생활용품은 '미분류'"),
@@ -172,7 +173,8 @@ object ReceiptOcrEngine {
             val jsonPayload = cleanJson.substring(startIdx, endIdx + 1)
 
             val merchantName = extractJsonField(jsonPayload, "merchantName")
-            val dateStr = extractJsonField(jsonPayload, "date")
+            val rawDateStr = extractJsonField(jsonPayload, "date")
+            val dateStr = normalizeDateString(rawDateStr)
             val totalAmount = extractJsonField(jsonPayload, "totalAmount").toDoubleOrNull() ?: 0.0
             val businessNumber = extractJsonField(jsonPayload, "businessNumber")
             val rawCategory = extractJsonField(jsonPayload, "category")
@@ -231,6 +233,68 @@ object ReceiptOcrEngine {
             safeLogE("ReceiptOcrEngine", "JSON parsing error: ${e.message}", e)
             generateUnrecognizedOcrResult(imagePath)
         }
+    }
+
+    private fun normalizeDateString(rawDate: String): String {
+        if (rawDate.isBlank()) {
+            val now = java.time.LocalDateTime.now()
+            return String.format(Locale.KOREA, "%04d-%02d-%02d %02d:%02d", now.year, now.monthValue, now.dayOfMonth, now.hour, now.minute)
+        }
+
+        // 1. 이미 YYYY-MM-DD HH:mm 형태인 경우 빠른 반환
+        val standardMatch = Regex("""^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$""").find(rawDate.trim())
+        if (standardMatch != null) {
+            return rawDate.trim()
+        }
+
+        // 2. 날짜 파싱 (년/월/일)
+        val cleaned = rawDate.split("·").firstOrNull()?.trim() ?: rawDate
+        val currentYear = java.time.LocalDate.now().year
+        var year = currentYear
+        var month = 1
+        var day = 1
+        var dateFound = false
+
+        val fullDateMatch = Regex("""(\d{4})[-.년\s/]+(\d{1,2})[-.월\s/]+(\d{1,2})""").find(cleaned)
+        if (fullDateMatch != null) {
+            year = fullDateMatch.groupValues[1].toInt()
+            month = fullDateMatch.groupValues[2].toInt()
+            day = fullDateMatch.groupValues[3].toInt()
+            dateFound = true
+        } else {
+            val mdMatch = Regex("""(\d{1,2})[-.월\s/]+(\d{1,2})[일\s]*""").find(cleaned)
+            if (mdMatch != null) {
+                month = mdMatch.groupValues[1].toInt()
+                day = mdMatch.groupValues[2].toInt()
+                dateFound = true
+            }
+        }
+
+        if (!dateFound) {
+            return rawDate.trim()
+        }
+
+        // 3. 시간 파싱 (오전/오후/시/분)
+        val timeRegex = Regex("""(오전|오후)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?""")
+        val timeMatch = timeRegex.find(rawDate)
+        var hour = 0
+        var min = 0
+        if (timeMatch != null) {
+            val ampm = timeMatch.groupValues[1]
+            hour = timeMatch.groupValues[2].toIntOrNull() ?: 0
+            min = timeMatch.groupValues[3].toIntOrNull() ?: 0
+            if (ampm == "오후" && hour in 1..11) {
+                hour += 12
+            } else if (ampm == "오전" && hour == 12) {
+                hour = 0
+            }
+        } else {
+            val now = java.time.LocalTime.now()
+            hour = now.hour
+            min = now.minute
+        }
+
+        return String.format(Locale.KOREA, "%04d-%02d-%02d %02d:%02d", year, month, day, hour, min)
     }
 
     private fun extractJsonField(json: String, key: String): String {

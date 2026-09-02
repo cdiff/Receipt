@@ -37,8 +37,9 @@ class ReceiptOcrEngineTest {
             listOf("식비", "교통비", "사무용품", "미분류")
         ) as OcrResult
 
+        val expectedYear = java.time.LocalDate.now().year
         assertEquals("(주)스타벅스코리아 강남점", result.merchantName)
-        assertEquals("8월 5일 · 오후 3:30", result.date)
+        assertEquals("$expectedYear-08-05 15:30", result.date)
         assertEquals(12500.0, result.totalAmount, 0.01)
         assertEquals("120-86-12345", result.businessNumber)
         assertEquals("식비", result.category)
@@ -74,8 +75,10 @@ class ReceiptOcrEngineTest {
             listOf("식비", "교통비", "사무용품", "미분류")
         ) as OcrResult
 
+        val expectedYear = java.time.LocalDate.now().year
         assertEquals("교통비", result.category)
         assertEquals("택시", result.subCategory)
+        assertEquals("$expectedYear-08-06 23:30", result.date)
     }
 
     @Test
