@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -14,11 +15,19 @@ class ReceiptApp : Application() {
         try {
             FirebaseApp.initializeApp(this)
             val firebaseAppCheck = FirebaseAppCheck.getInstance()
-            firebaseAppCheck.installAppCheckProviderFactory(
-                DebugAppCheckProviderFactory.getInstance()
-            )
+            if (BuildConfig.DEBUG) {
+                // 개발 및 로컬 테스트 환경 (Logcat 디버그 토큰)
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    DebugAppCheckProviderFactory.getInstance()
+                )
+            } else {
+                // Google Play 스토어 정식 배포 환경 (Play Integrity 무결성 검증)
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    PlayIntegrityAppCheckProviderFactory.getInstance()
+                )
+            }
         } catch (e: Exception) {
-            Log.e("ReceiptApp", "Firebase init error: ${e.message}", e)
+            Log.e("ReceiptApp", "Firebase App Check init error: ${e.message}", e)
         }
 
         // 🔔 스마트 알림 채널 등록 및 WorkManager 백그라운드 스케줄러 등록
