@@ -312,8 +312,8 @@ object ReceiptOcrEngine {
     private fun safeLogE(tag: String, msg: String, tr: Throwable? = null) {
         try {
             Log.e(tag, msg, tr)
-        } catch (t: Throwable) {
-            println("[$tag] ERROR: $msg")
+        } catch (_: Throwable) {
+            // Log.e 자체가 실패하는 극단적 상황 — 조용히 무시
         }
     }
 
