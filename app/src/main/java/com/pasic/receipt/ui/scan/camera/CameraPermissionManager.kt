@@ -66,19 +66,10 @@ fun CameraPermissionManager(
     var showRationaleDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
-    val permissionsToRequest = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-    }
-
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val cameraGranted = permissions[Manifest.permission.CAMERA] == true
-        if (cameraGranted) {
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
             permissionStatus = CameraPermissionStatus.GRANTED
         } else {
             permissionStatus = CameraPermissionStatus.PERMANENTLY_DENIED
@@ -176,7 +167,7 @@ fun CameraPermissionManager(
                                 if (permissionStatus == CameraPermissionStatus.PERMANENTLY_DENIED) {
                                     showSettingsDialog = true
                                 } else {
-                                    permissionLauncher.launch(permissionsToRequest)
+                                    permissionLauncher.launch(Manifest.permission.CAMERA)
                                 }
                             },
                             shape = RoundedCornerShape(12.dp),
@@ -215,7 +206,7 @@ fun CameraPermissionManager(
                     Button(
                         onClick = {
                             showRationaleDialog = false
-                            permissionLauncher.launch(permissionsToRequest)
+                            permissionLauncher.launch(Manifest.permission.CAMERA)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
                     ) {

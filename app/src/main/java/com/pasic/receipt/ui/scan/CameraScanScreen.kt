@@ -2,6 +2,7 @@ package com.pasic.receipt.ui.scan
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageProxy
@@ -50,7 +51,7 @@ import com.pasic.receipt.ui.scan.components.AiScanningOverlay
 import com.pasic.receipt.ui.scan.components.CameraHelpDialog
 import com.pasic.receipt.ui.scan.components.ReceiptScanFailureDialog
 import com.pasic.receipt.ui.scan.components.ReceiptScanOverlay
-import com.pasic.receipt.ui.scan.util.loadLatestGalleryThumbnail
+
 
 @Composable
 fun CameraScanScreen(
@@ -65,18 +66,9 @@ fun CameraScanScreen(
     var isCapturing by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
 
-    // Load recent gallery thumbnail image asynchronously on IO thread
-    var recentGalleryBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            recentGalleryBitmap = loadLatestGalleryThumbnail(context)
-        }
-    }
-
-    // Gallery Picker launcher
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+    // Photo Picker launcher
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
             viewModel.processGalleryUri(context, uri) {
@@ -85,8 +77,14 @@ fun CameraScanScreen(
         }
     }
 
+    val openPhotoPicker = {
+        photoPickerLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+    }
+
     CameraPermissionManager(
-        onGalleryClick = { galleryLauncher.launch("image/*") }
+        onGalleryClick = openPhotoPicker
     ) {
         Box(
             modifier = Modifier
@@ -146,31 +144,21 @@ fun CameraScanScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left: Recent Gallery Thumbnail Button
+                // Left: Gallery Button (Fixed Gallery Icon)
                 Surface(
-                    onClick = { galleryLauncher.launch("image/*") },
+                    onClick = openPhotoPicker,
                     shape = RoundedCornerShape(12.dp),
                     color = Color.Black.copy(alpha = 0.5f),
                     border = androidx.compose.foundation.BorderStroke(0.6.dp, Color.White.copy(alpha = 0.35f)),
                     modifier = Modifier.size(52.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        val bitmap = recentGalleryBitmap
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = "최근 앨범 이미지",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Lucide.ImageIcon,
-                                contentDescription = "갤러리 선택",
-                                tint = Color.White,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Lucide.ImageIcon,
+                            contentDescription = "갤러리에서 영수증 선택",
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
                     }
                 }
 

@@ -163,18 +163,21 @@ class ScanSharedViewModel @Inject constructor(
         scanningJob?.cancel()
         scanningJob = viewModelScope.launch {
             try {
-                val galleryBitmap = try {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                        android.graphics.ImageDecoder.decodeBitmap(android.graphics.ImageDecoder.createSource(context.contentResolver, uri))
-                    } else {
-                        @Suppress("DEPRECATION")
-                        android.provider.MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                    }
-                } catch (e: Exception) { null }
+                // 1. 단 1회 즉시 앱 내부 저장소로 안전 복사 (ContentResolver 1회 한정 읽기)
+                val savedPath = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    ReceiptImageStorage.copyUriToAppStorage(context, uri)
+                }
+                if (savedPath.isNullOrBlank()) {
+                    _uiState.update { it.copy(isScanning = false, isScanFailed = true, scanStep = 1, isStepDone = false, capturedBitmap = null) }
+                    return@launch
+                }
+
+                // 2. 복사된 로컬 파일에서 비트맵 로드 (SecurityException 및 권한 증발 원천 차단)
+                val galleryBitmap = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    ReceiptImageStorage.loadBitmapFromPath(savedPath)
+                }
 
                 _uiState.update { it.copy(isScanning = true, isScanFailed = false, scanStep = 1, isStepDone = false, capturedBitmap = galleryBitmap) }
-
-                val savedPath = ReceiptImageStorage.copyUriToAppStorage(context, uri) ?: ""
                 delay(700)
 
                 // 1단계 완료 ➔ 체크 팝업
@@ -184,7 +187,11 @@ class ScanSharedViewModel @Inject constructor(
                 // 2단계 시작
                 _uiState.update { it.copy(scanStep = 2, isStepDone = false) }
                 val existingCats = _uiState.value.customCategories.map { it.name }
-                val result = ReceiptOcrEngine.processImage(context, uri, savedPath, existingCats)
+                val result = if (galleryBitmap != null) {
+                    ReceiptOcrEngine.processBitmap(galleryBitmap, savedPath, existingCats)
+                } else {
+                    ReceiptOcrEngine.processImage(context, uri, savedPath, existingCats)
+                }
 
                 // 2단계 완료 ➔ 체크 팝업
                 _uiState.update { it.copy(isStepDone = true) }
